@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claims Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .dashboard-header {
+            background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+        .card { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .badge-processing { background-color: #2196F3; }
+        .badge-awaiting { background-color: #FF9800; }
+        .badge-approved { background-color: #4CAF50; }
+        .badge-rejected { background-color: #f44336; }
+        .badge-denied { background-color: #f44336; }
+        .badge-failed { background-color: #9E9E9E; }
+        .badge-timeout { background-color: #607D8B; }
+        .badge-manual { background-color: #9C27B0; }
+        .badge-documents { background-color: #795548; }
+        .claims-table th { background-color: #f5f5f5; }
+        .claims-table tr { cursor: pointer; }
+        .claims-table tr:hover { background-color: #e3f2fd; }
+        .new-claim-form { border-left: 4px solid #1a237e; }
+        .refresh-indicator {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .btn-new-claim {
+            background-color: #1a237e;
+            border-color: #1a237e;
+        }
+        .btn-new-claim:hover {
+            background-color: #3949ab;
+            border-color: #3949ab;
+        }
+        #newClaimForm.collapsed { display: none; }
+        .claim-count-badge {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+        }
+        /* Detail Modal Styles */
+        .detail-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .detail-section h6 {
+            color: #1a237e;
+            border-bottom: 2px solid #1a237e;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #dee2e6;
+        }
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #dee2e6;
+            border: 2px solid white;
+        }
+        .timeline-item.completed::before {
+            background-color: #4CAF50;
+        }
+        .timeline-item.active::before {
+            background-color: #FF9800;
+            box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.3);
+        }
+        .timeline-item.failed::before {
+            background-color: #f44336;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+        .info-item {
+            background: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            border-left: 3px solid #1a237e;
+        }
+        .info-item label {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 0;
+        }
+        .info-item .value {
+            font-weight: 500;
+            color: #333;
+        }
+        .rules-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .rule-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+        /* Real-time update styles */
+        @keyframes highlightNew {
+            0% { background-color: #c8e6c9; }
+            100% { background-color: transparent; }
+        }
+        @keyframes highlightChanged {
+            0% { background-color: #fff9c4; }
+            100% { background-color: transparent; }
+        }
+        .claim-new {
+            animation: highlightNew 3s ease-out;
+        }
+        .claim-changed {
+            animation: highlightChanged 2s ease-out;
+        }
+        .auto-refresh-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .pulse-dot.paused {
+            background-color: #9E9E9E;
+            animation: none;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        /* Search and Sort */
+        .search-sort-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+        }
+        .sort-dropdown {
+            min-width: 150px;
+        }
+        /* Loading overlay */
+        .table-loading {
+            position: relative;
+        }
+        .table-loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .loading-spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 11;
+        }
+        .table-loading .loading-spinner {
+            display: block;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .dashboard-header h1 { font-size: 1.5rem; }
+            .claims-table { font-size: 0.85rem; }
+            .claims-table th, .claims-table td { padding: 0.5rem; }
+            .claim-count-badge { font-size: 0.8rem; padding: 0.3rem 0.6rem; }
+            .search-box { max-width: 100%; }
+            .filter-row { overflow-x: auto; white-space: nowrap; padding-bottom: 0.5rem; }
+        }
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #666;
+        }
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        /* Stats cards */
+        .stats-row {
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid #1a237e;
+        }
+        .stat-card.processing { border-left-color: #2196F3; }
+        .stat-card.awaiting { border-left-color: #FF9800; }
+        .stat-card.completed { border-left-color: #4CAF50; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #1a237e; }
+        .stat-label { font-size: 0.85rem; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0">Claims Dashboard</h1>
+                    <small>HITL Orchestration Demo</small>
+                </div>
+                <div class="text-end">
+                    <div class="auto-refresh-indicator mb-1">
+                        <span class="pulse-dot" id="pulseDot"></span>
+                        <span id="autoRefreshStatus">Auto-refresh ON</span>
+                        <button class="btn btn-sm btn-outline-light ms-2" id="toggleAutoRefresh" onclick="toggleAutoRefresh()">
+                            Pause
+                        </button>
+                    </div>
+                    <span class="refresh-indicator" id="lastUpdated">Last updated: --</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- New Claim Form -->
+        <div class="card mb-4 new-claim-form">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">New Claim Submission</h5>
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleNewClaimForm()">
+                    <span id="toggleIcon">-</span>
+                </button>
+            </div>
+            <div class="card-body" id="newClaimForm">
+                <form id="claimForm" onsubmit="submitClaim(event)">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="claimId" class="form-label">Claim ID</label>
+                                <input type="text" class="form-control" id="claimId"
+                                       placeholder="Leave blank to auto-generate">
+                                <small class="text-muted">Format: CLM-YYYY-XXXXX</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="senderEmail" class="form-label">Sender Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="senderEmail" required
+                                       placeholder="claimant@email.com">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailSubject" class="form-label">Email Subject</label>
+                        <input type="text" class="form-control" id="emailSubject"
+                               placeholder="Claim Submission - Vehicle Repair">
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailContent" class="form-label">Email Content <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="emailContent" rows="4" required
+                                  placeholder="Enter the email body content describing the claim..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="attachmentUrl" class="form-label">Attachment URL (PDF) <span class="text-danger">*</span></label>
+                        <input type="url" class="form-control" id="attachmentUrl" required
+                               placeholder="https://storage.example.com/claims/document.pdf">
+                        <small class="text-muted">URL to the claim document (must be publicly accessible or have SAS token)</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-new-claim" id="submitBtn">
+                            Submit Claim
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                            Clear
+                        </button>
+                    </div>
+                </form>
+                <div id="submitStatus" class="mt-3" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row stats-row">
+            <div class="col-6 col-md-3 mb-2">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-all">0</div>
+                    <div class="stat-label">Total Claims</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="stat-card processing">
+                    <div class="stat-value" id="stat-processing">0</div>
+                    <div class="stat-label">With Agents</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="stat-card awaiting">
+                    <div class="stat-value" id="stat-awaiting">0</div>
+                    <div class="stat-label">Manual Estimate</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="stat-card completed">
+                    <div class="stat-value" id="stat-completed">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters, Search, Sort Row -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="d-flex gap-2 flex-wrap align-items-center filter-row">
+                    <span class="fw-bold me-1">Filter:</span>
+                    <button class="btn btn-sm claim-count-badge btn-secondary" onclick="filterClaims('all')" id="filter-all">
+                        All
+                    </button>
+                    <button class="btn btn-sm claim-count-badge btn-outline-primary" onclick="filterClaims('processing')" id="filter-processing">
+                        Classifier
+                    </button>
+                    <button class="btn btn-sm claim-count-badge btn-outline-warning" onclick="filterClaims('awaiting')" id="filter-awaiting">
+                        Manual Estimate
+                    </button>
+                    <button class="btn btn-sm claim-count-badge btn-outline-success" onclick="filterClaims('completed')" id="filter-completed">
+                        Completed
+                    </button>
+
+                    <div class="ms-auto search-sort-row">
+                        <div class="input-group input-group-sm search-box">
+                            <span class="input-group-text">Search</span>
+                            <input type="text" class="form-control" id="searchInput"
+                                   placeholder="Claim ID..." oninput="handleSearch()">
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()" title="Clear">
+                                &times;
+                            </button>
+                        </div>
+                        <select class="form-select form-select-sm sort-dropdown" id="sortSelect" onchange="handleSort()">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="updated">Recently Updated</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshClaims()">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Claims Table -->
+        <div class="card">
+            <div class="card-body p-0 position-relative" id="tableContainer">
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <table class="table table-hover claims-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%">Claim ID</th>
+                            <th style="width: 18%">Status</th>
+                            <th style="width: 17%">Classification</th>
+                            <th style="width: 18%">Created</th>
+                            <th style="width: 17%">Last Updated</th>
+                            <th style="width: 15%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="claimsTableBody">
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                Loading claims...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-muted py-3">
+            <small>HITL Orchestration Demo - Claims Dashboard</small>
+        </div>
+    </div>
+
+    <!-- Claim Detail Modal -->
+    <div class="modal fade" id="claimDetailModal" tabindex="-1" aria-labelledby="claimDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="claimDetailModalLabel">Claim Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="claimDetailBody">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" id="claimDetailFooter">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allClaims = [];
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let currentSort = 'newest';
+        let previousClaimsMap = new Map(); // Track previous state for change detection
+        let autoRefreshEnabled = true;
+        let autoRefreshInterval = null;
+        let isLoading = false;
+        const AUTO_REFRESH_SECONDS = 5;
+
+        // Generate a claim ID if not provided
+        function generateClaimId() {
+            const year = new Date().getFullYear();
+            const random = Math.floor(Math.random() * 90000) + 10000;
+            return `CLM-${year}-${random}`;
+        }
+
+        // Toggle new claim form visibility
+        function toggleNewClaimForm() {
+            const form = document.getElementById('newClaimForm');
+            const icon = document.getElementById('toggleIcon');
+            if (form.classList.contains('collapsed')) {
+                form.classList.remove('collapsed');
+                icon.textContent = '-';
+            } else {
+                form.classList.add('collapsed');
+                icon.textContent = '+';
+            }
+        }
+
+        // Clear the form
+        function clearForm() {
+            document.getElementById('claimForm').reset();
+            document.getElementById('submitStatus').style.display = 'none';
+        }
+
+        // Submit new claim
+        async function submitClaim(event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const statusDiv = document.getElementById('submitStatus');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            // Get form values
+            let claimId = document.getElementById('claimId').value.trim();
+            if (!claimId) {
+                claimId = generateClaimId();
+            }
+
+            const subject = document.getElementById('emailSubject').value.trim();
+            const emailContent = document.getElementById('emailContent').value.trim();
+            const fullContent = subject ? `Subject: ${subject}\n\n${emailContent}` : emailContent;
+
+            const payload = {
+                claim_id: claimId,
+                email_content: fullContent,
+                attachment_url: document.getElementById('attachmentUrl').value.trim(),
+                sender_email: document.getElementById('senderEmail').value.trim()
+            };
+
+            try {
+                const response = await fetch('/api/claims/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusDiv.className = 'mt-3 alert alert-success';
+                    statusDiv.innerHTML = `
+                        <strong>Claim submitted successfully!</strong><br>
+                        Claim ID: ${result.claim_id}<br>
+                        Instance ID: ${result.instance_id}
+                    `;
+                    statusDiv.style.display = 'block';
+
+                    // Clear form and refresh claims
+                    document.getElementById('claimForm').reset();
+                    setTimeout(() => {
+                        refreshClaims();
+                    }, 1000);
+                } else {
+                    statusDiv.className = 'mt-3 alert alert-danger';
+                    statusDiv.innerHTML = `<strong>Error:</strong> ${result.error || 'Failed to submit claim'}`;
+                    statusDiv.style.display = 'block';
+                }
+            } catch (error) {
+                statusDiv.className = 'mt-3 alert alert-danger';
+                statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                statusDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Claim';
+            }
+        }
+
+        // Get status badge class
+        function getStatusBadgeClass(displayStatus) {
+            const status = displayStatus.toLowerCase();
+            if (status.includes('processing')) return 'badge-processing';
+            if (status.includes('awaiting') || status.includes('manual estimate')) return 'badge-awaiting';
+            if (status === 'approved') return 'badge-approved';
+            if (status === 'rejected' || status === 'denied') return 'badge-rejected';
+            if (status === 'failed') return 'badge-failed';
+            if (status.includes('timeout') || status.includes('timed out')) return 'badge-timeout';
+            if (status.includes('manual review')) return 'badge-manual';
+            if (status.includes('document')) return 'badge-documents';
+            return 'bg-secondary';
+        }
+
+        // Get filter category for a claim
+        function getFilterCategory(claim) {
+            const status = claim.display_status.toLowerCase();
+            const runtime = claim.runtime_status.toLowerCase();
+
+            if (runtime === 'running') {
+                if (status.includes('awaiting') || status.includes('manual estimate')) {
+                    return 'awaiting';
+                }
+                return 'processing';
+            }
+            return 'completed';
+        }
+
+        // Filter claims
+        function filterClaims(filter) {
+            currentFilter = filter;
+
+            // Update button styles
+            const filterStyles = {
+                'all': { outline: 'btn-outline-secondary', active: 'btn-secondary' },
+                'processing': { outline: 'btn-outline-primary', active: 'btn-primary' },
+                'awaiting': { outline: 'btn-outline-warning', active: 'btn-warning' },
+                'completed': { outline: 'btn-outline-success', active: 'btn-success' }
+            };
+
+            Object.keys(filterStyles).forEach(key => {
+                const btn = document.getElementById(`filter-${key}`);
+                const style = filterStyles[key];
+                btn.classList.remove(style.outline, style.active);
+                btn.classList.add(key === filter ? style.active : style.outline);
+            });
+
+            renderClaims();
+        }
+
+        // Render claims table with optional change highlighting
+        function renderClaims(changes = { newClaims: new Set(), changedClaims: new Set() }) {
+            const tbody = document.getElementById('claimsTableBody');
+
+            // Start with all claims
+            let filteredClaims = [...allClaims];
+
+            // Apply status filter
+            if (currentFilter !== 'all') {
+                filteredClaims = filteredClaims.filter(claim => getFilterCategory(claim) === currentFilter);
+            }
+
+            // Apply search filter
+            if (currentSearch) {
+                filteredClaims = filteredClaims.filter(claim =>
+                    claim.claim_id.toLowerCase().includes(currentSearch) ||
+                    (claim.classification && claim.classification.toLowerCase().includes(currentSearch)) ||
+                    claim.display_status.toLowerCase().includes(currentSearch)
+                );
+            }
+
+            // Apply sort
+            filteredClaims.sort((a, b) => {
+                switch (currentSort) {
+                    case 'oldest':
+                        return (a.created_time || '') > (b.created_time || '') ? 1 : -1;
+                    case 'updated':
+                        return (b.last_updated_time || '') > (a.last_updated_time || '') ? 1 : -1;
+                    case 'newest':
+                    default:
+                        return (b.created_time || '') > (a.created_time || '') ? 1 : -1;
+                }
+            });
+
+            if (filteredClaims.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <p>No claims found${currentSearch ? ` matching "${currentSearch}"` : ''}${currentFilter !== 'all' ? ` in ${currentFilter}` : ''}</p>
+                                ${currentSearch ? '<button class="btn btn-sm btn-outline-primary" onclick="clearSearch()">Clear Search</button>' : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filteredClaims.map(claim => {
+                const createdDate = claim.created_time ? new Date(claim.created_time).toLocaleString() : '-';
+                const updatedDate = claim.last_updated_time ? new Date(claim.last_updated_time).toLocaleString() : '-';
+                const classification = claim.classification || '-';
+                const confidence = claim.confidence_score ? `(${(claim.confidence_score * 100).toFixed(0)}%)` : '';
+
+                const showManualEstimate = claim.display_status.toLowerCase().includes('awaiting');
+
+                // Determine highlight class
+                let highlightClass = '';
+                if (changes.newClaims.has(claim.instance_id)) {
+                    highlightClass = 'claim-new';
+                } else if (changes.changedClaims.has(claim.instance_id)) {
+                    highlightClass = 'claim-changed';
+                }
+
+                return `
+                    <tr class="${highlightClass}" onclick="viewClaimDetails('${claim.instance_id}')">
+                        <td><strong>${claim.claim_id}</strong></td>
+                        <td>
+                            <span class="badge ${getStatusBadgeClass(claim.display_status)}">
+                                ${claim.display_status}
+                            </span>
+                        </td>
+                        <td>${classification} ${confidence}</td>
+                        <td>${createdDate}</td>
+                        <td>${updatedDate}</td>
+                        <td>
+                            ${showManualEstimate ?
+                                `<a href="/api/review/${claim.instance_id}" target="_blank" class="btn btn-sm btn-warning"
+                                    onclick="event.stopPropagation()">
+                                    Manual Estimate
+                                </a>` :
+                                `<button class="btn btn-sm btn-outline-secondary"
+                                    onclick="event.stopPropagation(); viewClaimDetails('${claim.instance_id}')">
+                                    View
+                                </button>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Update counts for stats cards
+        function updateCounts() {
+            const counts = {
+                all: allClaims.length,
+                processing: 0,
+                awaiting: 0,
+                completed: 0
+            };
+
+            allClaims.forEach(claim => {
+                const category = getFilterCategory(claim);
+                counts[category]++;
+            });
+
+            // Update stat cards
+            document.getElementById('stat-all').textContent = counts.all;
+            document.getElementById('stat-processing').textContent = counts.processing;
+            document.getElementById('stat-awaiting').textContent = counts.awaiting;
+            document.getElementById('stat-completed').textContent = counts.completed;
+        }
+
+        // Refresh claims from API with change detection
+        async function refreshClaims(isAutoRefresh = false) {
+            if (!isAutoRefresh) {
+                setLoading(true);
+            }
+
+            try {
+                const response = await fetch('/api/claims');
+                const data = await response.json();
+
+                if (response.ok) {
+                    const newClaims = data.claims || [];
+
+                    // Detect changes
+                    const changes = detectChanges(newClaims);
+
+                    allClaims = newClaims;
+                    updateCounts();
+                    renderClaims(changes);
+
+                    // Update previous state map
+                    previousClaimsMap.clear();
+                    newClaims.forEach(claim => {
+                        previousClaimsMap.set(claim.instance_id, {
+                            display_status: claim.display_status,
+                            step: claim.step
+                        });
+                    });
+
+                    document.getElementById('lastUpdated').textContent =
+                        `Last updated: ${new Date().toLocaleTimeString()}`;
+                } else {
+                    console.error('Failed to fetch claims:', data.error);
+                }
+            } catch (error) {
+                console.error('Error fetching claims:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Detect new and changed claims
+        function detectChanges(newClaims) {
+            const changes = {
+                newClaims: new Set(),
+                changedClaims: new Set()
+            };
+
+            newClaims.forEach(claim => {
+                const previous = previousClaimsMap.get(claim.instance_id);
+                if (!previous) {
+                    // New claim
+                    changes.newClaims.add(claim.instance_id);
+                } else if (previous.display_status !== claim.display_status ||
+                           previous.step !== claim.step) {
+                    // Status changed
+                    changes.changedClaims.add(claim.instance_id);
+                }
+            });
+
+            return changes;
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+
+            const btn = document.getElementById('toggleAutoRefresh');
+            const status = document.getElementById('autoRefreshStatus');
+            const dot = document.getElementById('pulseDot');
+
+            if (autoRefreshEnabled) {
+                btn.textContent = 'Pause';
+                status.textContent = 'Auto-refresh ON';
+                dot.classList.remove('paused');
+                startAutoRefresh();
+            } else {
+                btn.textContent = 'Resume';
+                status.textContent = 'Auto-refresh OFF';
+                dot.classList.add('paused');
+                stopAutoRefresh();
+            }
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    refreshClaims(true);
+                }
+            }, AUTO_REFRESH_SECONDS * 1000);
+        }
+
+        // Stop auto-refresh
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // Search handling
+        function handleSearch() {
+            currentSearch = document.getElementById('searchInput').value.trim().toLowerCase();
+            renderClaims();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            currentSearch = '';
+            renderClaims();
+        }
+
+        // Sort handling
+        function handleSort() {
+            currentSort = document.getElementById('sortSelect').value;
+            renderClaims();
+        }
+
+        // Show/hide loading state
+        function setLoading(loading) {
+            isLoading = loading;
+            const container = document.getElementById('tableContainer');
+            if (loading) {
+                container.classList.add('table-loading');
+            } else {
+                container.classList.remove('table-loading');
+            }
+        }
+
+        // View claim details in modal
+        async function viewClaimDetails(instanceId) {
+            const modal = new bootstrap.Modal(document.getElementById('claimDetailModal'));
+            const modalBody = document.getElementById('claimDetailBody');
+            const modalFooter = document.getElementById('claimDetailFooter');
+            const modalTitle = document.getElementById('claimDetailModalLabel');
+
+            // Show loading state
+            modalBody.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            modalFooter.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`;
+            modal.show();
+
+            try {
+                const response = await fetch(`/api/claims/status/${instanceId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    modalBody.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Failed to load details'}</div>`;
+                    return;
+                }
+
+                // Extract data
+                const claimId = instanceId.replace('claim-', '');
+                const customStatus = data.custom_status || {};
+                const output = data.output || {};
+                const agent1Output = output.agent1_output || customStatus.agent1_output || {};
+                const agent2Output = output.agent2_output || {};
+                const approvalDecision = output.approval_decision || {};
+
+                modalTitle.textContent = `Claim: ${claimId}`;
+
+                // Build modal content
+                modalBody.innerHTML = `
+                    <!-- Status Header -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge ${getStatusBadgeClass(getDisplayStatus(data))} fs-6">
+                            ${getDisplayStatus(data)}
+                        </span>
+                        <small class="text-muted">Instance: ${instanceId}</small>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="detail-section">
+                        <h6>Workflow Timeline</h6>
+                        <div class="timeline">
+                            ${buildTimeline(data)}
+                        </div>
+                    </div>
+
+                    <!-- Agent 1 Output -->
+                    ${agent1Output.classification ? `
+                    <div class="detail-section">
+                        <h6>Claim Classifier Agent</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <label>Claim Type</label>
+                                    <div class="value">${agent1Output.classification?.claim_type || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-item">
+                                    <label>Sub Type</label>
+                                    <div class="value">${agent1Output.classification?.sub_type || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-item">
+                                    <label>Confidence</label>
+                                    <div class="value">${agent1Output.confidence_score ? (agent1Output.confidence_score * 100).toFixed(0) + '%' : '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${agent1Output.justification ? `
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Justification</label>
+                            <p class="mb-0 small">${agent1Output.justification}</p>
+                        </div>
+                        ` : ''}
+                        ${agent1Output.extracted_info ? `
+                        <div class="info-grid">
+                            ${buildExtractedInfo(agent1Output.extracted_info)}
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : '<div class="detail-section"><h6>Claim Classifier Agent</h6><p class="text-muted">Processing or not yet available...</p></div>'}
+
+                    <!-- Approval Decision -->
+                    ${approvalDecision.decision ? `
+                    <div class="detail-section">
+                        <h6>Manual Review Decision</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="info-item">
+                                    <label>Decision</label>
+                                    <div class="value">
+                                        <span class="badge ${approvalDecision.decision === 'approved' ? 'bg-success' : 'bg-danger'}">
+                                            ${approvalDecision.decision.toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-item">
+                                    <label>Reviewer</label>
+                                    <div class="value">${approvalDecision.reviewer || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-item">
+                                    <label>Timestamp</label>
+                                    <div class="value">${approvalDecision.timestamp ? new Date(approvalDecision.timestamp).toLocaleString() : '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${approvalDecision.comments ? `
+                        <div class="mt-2">
+                            <label class="form-label text-muted small">Comments</label>
+                            <p class="mb-0 small">${approvalDecision.comments}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    <!-- Agent 2 Output -->
+                    ${agent2Output.decision ? `
+                    <div class="detail-section">
+                        <h6>Claim Adjudicator Agent</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="info-item">
+                                    <label>Decision</label>
+                                    <div class="value">
+                                        <span class="badge ${getAgent2DecisionBadge(agent2Output.decision)}">
+                                            ${agent2Output.decision}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-item">
+                                    <label>Approved Amount</label>
+                                    <div class="value">${agent2Output.approved_amount != null ? '$' + agent2Output.approved_amount.toFixed(2) : '-'}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-item">
+                                    <label>Deductible</label>
+                                    <div class="value">${agent2Output.deductible_applied != null ? '$' + agent2Output.deductible_applied.toFixed(2) : '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${agent2Output.reason ? `
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Reason</label>
+                            <p class="mb-0 small">${agent2Output.reason}</p>
+                        </div>
+                        ` : ''}
+                        ${agent2Output.rules_evaluated?.length ? `
+                        <div class="mb-2">
+                            <label class="form-label text-muted small">Rules Evaluated</label>
+                            <div class="rules-list">
+                                ${agent2Output.rules_evaluated.map(rule =>
+                                    `<span class="badge rule-badge ${agent2Output.rules_passed?.includes(rule) ? 'bg-success' :
+                                        agent2Output.rules_failed?.includes(rule) ? 'bg-danger' : 'bg-secondary'}">${rule}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    <!-- Timestamps -->
+                    <div class="text-muted small">
+                        <div class="row">
+                            <div class="col-md-6">Created: ${data.created_time ? new Date(data.created_time).toLocaleString() : '-'}</div>
+                            <div class="col-md-6">Last Updated: ${data.last_updated_time ? new Date(data.last_updated_time).toLocaleString() : '-'}</div>
+                        </div>
+                    </div>
+                `;
+
+                // Update footer with actions
+                const isAwaiting = customStatus.step === 'awaiting_approval';
+                modalFooter.innerHTML = `
+                    ${isAwaiting ? `
+                    <a href="/api/review/${instanceId}" target="_blank" class="btn btn-warning">
+                        Open Manual Estimate
+                    </a>
+                    ` : ''}
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.open('/api/claims/status/${instanceId}', '_blank')">
+                        View Raw JSON
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                `;
+
+            } catch (error) {
+                modalBody.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Get display status from full status data
+        function getDisplayStatus(data) {
+            const customStatus = data.custom_status || {};
+            const step = customStatus.step || 'unknown';
+            const runtimeStatus = data.runtime_status;
+
+            if (runtimeStatus === 'Running') {
+                const stepMap = {
+                    'agent1_processing': 'Classifier Processing',
+                    'awaiting_approval': 'Awaiting Manual Estimate',
+                    'agent2_processing': 'Adjudicator Processing'
+                };
+                return stepMap[step] || step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+
+            if (runtimeStatus === 'Completed') {
+                const output = data.output || {};
+                if (output.status === 'rejected') return 'Rejected';
+                if (output.status === 'timeout') return 'Timed Out';
+                const agent2Decision = output.agent2_output?.decision;
+                if (agent2Decision) return agent2Decision.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                return 'Completed';
+            }
+
+            return runtimeStatus || 'Unknown';
+        }
+
+        // Build timeline HTML
+        function buildTimeline(data) {
+            const customStatus = data.custom_status || {};
+            const output = data.output || {};
+            const step = customStatus.step || '';
+            const runtimeStatus = data.runtime_status;
+
+            // Get stage timestamps from custom_status or output
+            const timestamps = customStatus.stage_timestamps || output.stage_timestamps || {};
+
+            const stages = [
+                { id: 'received', label: 'Claim Received', timeKey: 'received' },
+                { id: 'agent1', label: 'Claim Classifier Agent', timeKey: 'classifier_completed' },
+                { id: 'awaiting', label: 'Awaiting Manual Estimate', timeKey: 'awaiting_started' },
+                { id: 'agent2', label: 'Claim Adjudicator Agent', timeKey: 'adjudicator_completed' },
+                { id: 'complete', label: 'Completed', timeKey: 'completed' }
+            ];
+
+            // Determine which stages are complete/active/pending
+            const stageStatus = {
+                received: 'completed',
+                agent1: 'pending',
+                awaiting: 'pending',
+                agent2: 'pending',
+                complete: 'pending'
+            };
+
+            if (step === 'agent1_processing') {
+                stageStatus.agent1 = 'active';
+            } else if (step === 'awaiting_approval' || step === 'sending_notification') {
+                stageStatus.agent1 = 'completed';
+                stageStatus.awaiting = 'active';
+            } else if (step === 'agent2_processing') {
+                stageStatus.agent1 = 'completed';
+                stageStatus.awaiting = 'completed';
+                stageStatus.agent2 = 'active';
+            } else if (step === 'agent2_completed' || step === 'rejected' || step === 'timeout') {
+                stageStatus.agent1 = 'completed';
+                stageStatus.awaiting = 'completed';
+                stageStatus.agent2 = 'completed';
+                stageStatus.complete = 'completed';
+            }
+
+            if (runtimeStatus === 'Failed') {
+                // Mark current step as failed
+                for (const key in stageStatus) {
+                    if (stageStatus[key] === 'active') stageStatus[key] = 'failed';
+                }
+            }
+
+            return stages.map(stage => {
+                const status = stageStatus[stage.id];
+                // Get timestamp for this stage
+                let timeStr = '';
+                const ts = timestamps[stage.timeKey];
+                if (ts && (status === 'completed' || status === 'active')) {
+                    timeStr = `<small class="text-muted d-block">${new Date(ts).toLocaleString()}</small>`;
+                }
+                return `
+                    <div class="timeline-item ${status}">
+                        <strong>${stage.label}</strong>
+                        ${timeStr}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Build extracted info grid
+        function buildExtractedInfo(info) {
+            const fields = [
+                { key: 'claimant_name', label: 'Claimant' },
+                { key: 'claimant_email', label: 'Email' },
+                { key: 'claimant_phone', label: 'Phone' },
+                { key: 'contract_number', label: 'Contract #' },
+                { key: 'vehicle_year', label: 'Year' },
+                { key: 'vehicle_make', label: 'Make' },
+                { key: 'vehicle_model', label: 'Model' },
+                { key: 'vehicle_vin', label: 'VIN' },
+                { key: 'repair_facility', label: 'Repair Facility' },
+                { key: 'total_estimate', label: 'Estimate', format: v => '$' + v.toFixed(2) }
+            ];
+
+            return fields
+                .filter(f => info[f.key] != null)
+                .map(f => `
+                    <div class="info-item">
+                        <label>${f.label}</label>
+                        <div class="value">${f.format ? f.format(info[f.key]) : info[f.key]}</div>
+                    </div>
+                `).join('');
+        }
+
+        // Get Agent2 decision badge class
+        function getAgent2DecisionBadge(decision) {
+            const d = (decision || '').toUpperCase();
+            if (d === 'APPROVED') return 'bg-success';
+            if (d === 'DENIED') return 'bg-danger';
+            if (d === 'MANUAL_REVIEW') return 'bg-warning text-dark';
+            if (d.includes('DOCUMENT')) return 'bg-info';
+            return 'bg-secondary';
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshClaims();
+            startAutoRefresh();
+        });
+    </script>
+</body>
+</html>

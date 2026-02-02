@@ -55,6 +55,41 @@ async def health_check(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
+@app.route(route="dashboard", methods=["GET"])
+async def serve_dashboard(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Serve the Claims Dashboard HTML page.
+
+    Returns:
+        200: HTML dashboard page
+        404: Static file not found
+    """
+    try:
+        static_dir = Path(__file__).parent / "static"
+        html_path = static_dir / "dashboard.html"
+
+        if not html_path.exists():
+            return func.HttpResponse(
+                "Dashboard not found",
+                status_code=404
+            )
+
+        html_content = html_path.read_text(encoding="utf-8")
+
+        return func.HttpResponse(
+            body=html_content,
+            status_code=200,
+            mimetype="text/html"
+        )
+
+    except Exception as e:
+        logger.error(f"Error serving dashboard: {str(e)}")
+        return func.HttpResponse(
+            f"Error loading dashboard: {str(e)}",
+            status_code=500
+        )
+
+
 @app.route(route="review/{instance_id}", methods=["GET"])
 async def serve_review_ui(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -199,22 +234,18 @@ async def start_claim_orchestration(req: func.HttpRequest, client) -> func.HttpR
 
 @app.route(route="claims/approve/{instance_id}", methods=["POST"])
 @app.durable_client_input(client_name="client")
-async def approve_claim(req: func.HttpRequest, client) -> func.HttpResponse:
+async def submit_estimate(req: func.HttpRequest, client) -> func.HttpResponse:
     """
-    HTTP trigger to approve or reject a claim waiting for human review.
+    HTTP trigger to submit manual estimate data for a claim.
+
+    This is a data entry step - the Claim Adjudicator Agent will make
+    the actual approval/rejection decision.
 
     Request Body:
         {
-            "decision": "approved" | "rejected",
-            "reviewer": "reviewer@company.com",
-            "comments": "Optional comments",
-            "claim_amounts": {  // optional, for approved claims
-                "total_parts_cost": 330.00,
-                "total_labor_cost": 437.50,
-                "total_estimate": 767.50,
-                "deductible": 100.00
-            },
-            "claim_data": {  // optional, complete claim data for Agent2
+            "reviewer": "estimator@company.com",
+            "comments": "Optional notes for adjudicator",
+            "claim_data": {
                 "claimant": { "name": "...", "email": "...", "phone": "..." },
                 "contract": { "contract_number": "...", ... },
                 "vehicle": { "year": 2022, "make": "Honda", ... },
@@ -227,7 +258,7 @@ async def approve_claim(req: func.HttpRequest, client) -> func.HttpResponse:
         200: Success
         400: Invalid request
         404: Instance not found
-        409: Instance not waiting for approval
+        409: Instance not waiting for estimate
     """
     instance_id = req.route_params.get("instance_id")
 
@@ -242,18 +273,9 @@ async def approve_claim(req: func.HttpRequest, client) -> func.HttpResponse:
                 mimetype="application/json"
             )
 
-        # Validate decision
-        decision = body.get("decision", "").lower()
-        if decision not in ["approved", "rejected"]:
-            return func.HttpResponse(
-                json.dumps({
-                    "success": False,
-                    "error": "invalid_decision",
-                    "message": "Decision must be 'approved' or 'rejected'"
-                }),
-                status_code=400,
-                mimetype="application/json"
-            )
+        # Decision defaults to "approved" (proceed to Adjudicator Agent)
+        # Kept for backward compatibility - rejection path still exists but not used by UI
+        decision = body.get("decision", "approved").lower()
 
         # Validate reviewer
         reviewer = body.get("reviewer")
@@ -325,24 +347,129 @@ async def approve_claim(req: func.HttpRequest, client) -> func.HttpResponse:
             event_data=approval_data
         )
 
-        logger.info(f"Approval event raised for {instance_id}: {decision} by {reviewer}")
+        logger.info(f"Estimate submitted for {instance_id} by {reviewer}")
 
         return func.HttpResponse(
             json.dumps({
                 "success": True,
                 "instance_id": instance_id,
-                "decision": decision,
-                "reviewer": reviewer,
-                "message": f"Claim {decision} successfully"
+                "submitted_by": reviewer,
+                "message": "Estimate submitted successfully"
             }),
             status_code=200,
             mimetype="application/json"
         )
 
     except Exception as e:
-        logger.error(f"Error processing approval for {instance_id}: {str(e)}")
+        logger.error(f"Error submitting estimate for {instance_id}: {str(e)}")
         return func.HttpResponse(
             json.dumps({"success": False, "error": f"Internal error: {str(e)}"}),
+            status_code=500,
+            mimetype="application/json"
+        )
+
+
+@app.route(route="claims", methods=["GET"])
+@app.durable_client_input(client_name="client")
+async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
+    """
+    HTTP trigger to list all claim orchestrations.
+
+    Query Parameters:
+        status: Filter by runtime status (Running, Completed, Failed, etc.)
+
+    Returns:
+        200: JSON array of claims with status info
+    """
+    try:
+        # Get optional status filter from query params
+        status_filter = req.params.get("status")
+
+        # Query all orchestration instances and filter by prefix
+        # The SDK's get_status_by returns a list of DurableOrchestrationStatus
+        all_instances = await client.get_status_by()
+
+        # Filter to only claim instances (start with "claim-")
+        instances = [inst for inst in all_instances if inst.instance_id.startswith("claim-")]
+
+        claims = []
+        for instance in instances:
+            # Apply status filter if provided
+            if status_filter and instance.runtime_status.name.lower() != status_filter.lower():
+                continue
+
+            # Extract claim_id from instance_id (remove "claim-" prefix)
+            claim_id = instance.instance_id.replace("claim-", "", 1)
+
+            # Get custom status for step info
+            custom_status = instance.custom_status or {}
+
+            # Map internal step names to display names
+            step = custom_status.get("step") or "unknown"
+            display_status = {
+                "agent1_processing": "Classifier Processing",
+                "sending_notification": "Classifier Processing",
+                "awaiting_approval": "Awaiting Manual Estimate",
+                "agent2_processing": "Adjudicator Processing",
+                "agent2_completed": "Completed",
+                "rejected": "Rejected",
+                "timeout": "Timed Out"
+            }.get(step, step.replace("_", " ").title())
+
+            # Determine final display status based on runtime status
+            runtime_status = instance.runtime_status.name
+            if runtime_status == "Completed":
+                # Check output for final status
+                output = instance.output or {}
+                final_status = output.get("status") or "completed"
+                if final_status == "rejected":
+                    display_status = "Rejected"
+                elif final_status == "timeout":
+                    display_status = "Timed Out"
+                elif final_status == "completed":
+                    # Check agent2 decision (use 'or {}' since value could be None)
+                    agent2_output = output.get("agent2_output") or {}
+                    decision = agent2_output.get("decision") or "APPROVED"
+                    if decision == "APPROVED":
+                        display_status = "Approved"
+                    elif decision == "DENIED":
+                        display_status = "Denied"
+                    else:
+                        display_status = decision.replace("_", " ").title()
+            elif runtime_status == "Failed":
+                display_status = "Failed"
+            elif runtime_status == "Terminated":
+                display_status = "Terminated"
+
+            claim_info = {
+                "claim_id": claim_id,
+                "instance_id": instance.instance_id,
+                "runtime_status": runtime_status,
+                "display_status": display_status,
+                "step": step,
+                "created_time": instance.created_time.isoformat() if instance.created_time else None,
+                "last_updated_time": instance.last_updated_time.isoformat() if instance.last_updated_time else None,
+                "classification": custom_status.get("classification"),
+                "confidence_score": custom_status.get("confidence_score")
+            }
+
+            claims.append(claim_info)
+
+        # Sort by created_time descending (newest first)
+        claims.sort(key=lambda x: x.get("created_time") or "", reverse=True)
+
+        logger.info(f"Listed {len(claims)} claims")
+
+        return func.HttpResponse(
+            json.dumps({"claims": claims, "count": len(claims)}),
+            status_code=200,
+            mimetype="application/json"
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing claims: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": f"Internal error: {str(e)}"}),
             status_code=500,
             mimetype="application/json"
         )
@@ -438,13 +565,20 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     claim_id = input_data.get("claim_id")
     started_at = context.current_utc_datetime.isoformat()
 
+    # Initialize stage timestamps for timeline tracking
+    stage_timestamps = {
+        "received": started_at
+    }
+
     # =========================================================================
     # Step 1: Agent1 Classification
     # =========================================================================
+    stage_timestamps["classifier_started"] = context.current_utc_datetime.isoformat()
     context.set_custom_status({
         "step": "agent1_processing",
         "claim_id": claim_id,
-        "message": "Classifying claim with Agent1..."
+        "message": "Classifying claim with Claim Classifier Agent...",
+        "stage_timestamps": stage_timestamps
     })
 
     # Prepare Agent1 input
@@ -465,11 +599,13 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     # =========================================================================
     # Step 2: Send Notification for Human Approval
     # =========================================================================
+    stage_timestamps["classifier_completed"] = context.current_utc_datetime.isoformat()
     context.set_custom_status({
         "step": "sending_notification",
         "claim_id": claim_id,
         "classification": agent1_result.get("classification", {}).get("claim_type"),
-        "message": "Sending notification for approval..."
+        "message": "Sending notification for approval...",
+        "stage_timestamps": stage_timestamps
     })
 
     # Build notification input
@@ -492,13 +628,15 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     # =========================================================================
     # Step 3: Wait for Human Approval (with timeout)
     # =========================================================================
+    stage_timestamps["awaiting_started"] = context.current_utc_datetime.isoformat()
     context.set_custom_status({
         "step": "awaiting_approval",
         "claim_id": claim_id,
         "classification": agent1_result.get("classification", {}).get("claim_type"),
         "confidence_score": agent1_result.get("confidence_score"),
-        "message": "Waiting for human approval...",
-        "agent1_output": agent1_result  # Full Agent1 output for reviewer
+        "message": "Waiting for manual estimate...",
+        "agent1_output": agent1_result,  # Full Agent1 output for reviewer
+        "stage_timestamps": stage_timestamps
     })
 
     if not context.is_replaying:
@@ -527,10 +665,12 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
         if not context.is_replaying:
             logger.warning(f"[{instance_id}] Approval timed out after {APPROVAL_TIMEOUT_HOURS} hours")
 
+        stage_timestamps["timeout"] = context.current_utc_datetime.isoformat()
         context.set_custom_status({
             "step": "timeout",
             "claim_id": claim_id,
-            "message": f"Approval timed out after {APPROVAL_TIMEOUT_HOURS} hours"
+            "message": f"Approval timed out after {APPROVAL_TIMEOUT_HOURS} hours",
+            "stage_timestamps": stage_timestamps
         })
 
         final_status = "timeout"
@@ -549,11 +689,14 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
             if not context.is_replaying:
                 logger.info(f"[{instance_id}] Claim rejected by {approval_decision.get('reviewer')}")
 
+            stage_timestamps["approval_received"] = approval_decision.get("timestamp") or context.current_utc_datetime.isoformat()
+            stage_timestamps["completed"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
                 "step": "rejected",
                 "claim_id": claim_id,
                 "reviewer": approval_decision.get("reviewer"),
-                "message": "Claim rejected by reviewer"
+                "message": "Claim rejected by reviewer",
+                "stage_timestamps": stage_timestamps
             })
 
             final_status = "rejected"
@@ -566,11 +709,14 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
             # =========================================================================
             # Step 5: Call Agent2 for Adjudication
             # =========================================================================
+            stage_timestamps["approval_received"] = approval_decision.get("timestamp") or context.current_utc_datetime.isoformat()
+            stage_timestamps["adjudicator_started"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
                 "step": "agent2_processing",
                 "claim_id": claim_id,
                 "reviewer": approval_decision.get("reviewer"),
-                "message": "Processing claim with Agent2..."
+                "message": "Processing claim with Claim Adjudicator Agent...",
+                "stage_timestamps": stage_timestamps
             })
 
             # Prepare Agent2 input
@@ -590,12 +736,15 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
             if not context.is_replaying:
                 logger.info(f"[{instance_id}] Agent2 completed - Decision: {agent2_output.get('decision')}")
 
+            stage_timestamps["adjudicator_completed"] = context.current_utc_datetime.isoformat()
+            stage_timestamps["completed"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
                 "step": "agent2_completed",
                 "claim_id": claim_id,
                 "decision": agent2_output.get("decision"),
                 "approved_amount": agent2_output.get("approved_amount"),
-                "message": "Adjudication complete"
+                "message": "Adjudication complete",
+                "stage_timestamps": stage_timestamps
             })
 
             final_status = "completed"
@@ -610,6 +759,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
         "approval_decision": approval_decision,
         "agent2_input": agent2_input,
         "agent2_output": agent2_output,
+        "stage_timestamps": stage_timestamps,
         "error_message": None,
         "started_at": started_at,
         "completed_at": context.current_utc_datetime.isoformat()

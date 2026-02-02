@@ -14,3 +14,6 @@ pydantic>=2.10.0
 # Utilities
 python-dateutil>=2.9.0
 python-dotenv
+
+# JSON repair for LLM responses
+json5>=0.9.0

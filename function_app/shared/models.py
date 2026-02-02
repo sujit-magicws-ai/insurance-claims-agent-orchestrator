@@ -141,12 +141,13 @@ class ClaimAmounts(BaseModel):
 
 
 class ApprovalDecision(BaseModel):
-    """Human reviewer's decision from HITL UI.
+    """Manual estimate submission from HITL UI.
 
-    Contains the approval/rejection decision and any data entered by reviewer.
+    Contains the estimate data entered by the reviewer. The actual approval/rejection
+    decision is made by the Claim Adjudicator Agent, not the human reviewer.
     """
-    decision: Literal["approved", "rejected"] = Field(..., description="Reviewer's decision")
-    reviewer: str = Field(..., description="Reviewer's email or identifier")
+    decision: Literal["approved", "rejected"] = Field("approved", description="Defaults to approved (proceed to adjudicator)")
+    reviewer: str = Field(..., description="Submitted by (email or identifier)")
     comments: str = Field("", description="Reviewer's comments")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="When decision was made")
     claim_amounts: Optional[ClaimAmounts] = Field(None, description="Claim amounts entered by reviewer")

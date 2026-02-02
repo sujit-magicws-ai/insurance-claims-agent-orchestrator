@@ -3,6 +3,7 @@
 > **Project:** Human-in-the-Loop Orchestration with Azure AI Foundry Agents
 > **Created:** 2026-02-01
 > **Status:** ✅ Completed
+> **Repository:** https://github.com/sujit-magicws-ai/insurance-claims-agent-orchestrator
 
 ---
 
@@ -94,9 +95,12 @@ Create the Pydantic data models and shared agent client utility.
 | Model | Purpose |
 |-------|---------|
 | `Agent1Input` | Email content + attachment URL for classification |
-| `Agent1Output` | Classification, justification, extracted info |
-| `ClaimClassification` | Claim type, sub-type, urgency |
-| `ApprovalDecision` | Human reviewer decision + claim amounts |
+| `Agent1Output` | Classification, justification, extractions (email/document/merged) |
+| `ClaimClassification` | Claim type, sub-type, component category, urgency |
+| `EmailBodyExtraction` | Fields extracted from email body |
+| `DocumentExtraction` | Fields extracted from PDF attachment |
+| `ExtractedInfo` | Merged superset of email + document extractions |
+| `ApprovalDecision` | Human reviewer decision + claim_data for Agent2 |
 | `Agent2Output` | Adjudication decision, rules evaluated, amounts |
 | `OrchestrationResult` | Final orchestration result |
 
@@ -142,12 +146,22 @@ Create the orchestrator with real Azure AI Foundry Agent1 (claim-assistant-agent
 
 | Feature | Description |
 |---------|-------------|
-| Classification | VSC, GAP, Tire & Wheel claim type detection |
+| Classification | VSC, GAP, Tire & Wheel, PPM, Appearance, Theft claim type detection |
+| Contract Types | 7 contract types defined in prompt with coverage details |
+| Email Body Extraction | Extracts claimant/vehicle/repair info from email body |
 | Document Extraction | Fetches and parses PDF attachments |
+| Merged `extracted_info` | Superset of email + document extraction with merge rules |
 | `document_extraction.status` | success / failed / not_accessible |
 | `document_extraction.summary` | 2-3 sentence summary of document |
 | `document_extraction.extracted_fields` | Claimant, contract, VIN, estimate breakdown |
 | URL Encoding | Automatic encoding of spaces/special chars in URLs |
+
+### Extraction Merge Rules
+| Field | Priority |
+|-------|----------|
+| `claimant_email` | Always from `sender_email` |
+| `issue_summary` | Email preferred (customer's own words) |
+| All other fields | Document preferred, email as fallback |
 
 ### Testing Phase 3
 
@@ -167,21 +181,36 @@ Create the orchestrator with real Azure AI Foundry Agent1 (claim-assistant-agent
 
 ### Test Results (2026-02-01)
 
-**Real Agent1 Response:**
+**Real Agent1 Response (Updated Structure):**
 ```json
 {
   "classification": {"claim_type": "VSC", "sub_type": "Mechanical", "component_category": "Transmission"},
   "confidence_score": 0.98,
+  "email_body_extraction": {
+    "claimant_phone": "555-123-4567",
+    "issue_summary": "Transmission issues reported - grinding noise when shifting",
+    "vehicle_year": 2022, "vehicle_make": "Honda", "vehicle_model": "Accord"
+  },
   "document_extraction": {
     "status": "success",
     "document_type": "claim_form",
     "summary": "VSC Claim Form for CLM-2026-00142, submitted by John Smith...",
     "extracted_fields": {
       "claimant_name": "John Smith",
+      "claimant_phone": "555-987-6543",
+      "claimant_address": "123 Main St, Tampa, FL 33601",
       "contract_number": "VSC-2024-78542",
       "vehicle_vin": "1HGCV1F34NA000123",
-      "total_estimate": 767.5
+      "total_parts": 330.00, "total_labor": 437.50, "total_estimate": 767.50
     }
+  },
+  "extracted_info": {
+    "claimant_name": "John Smith",
+    "claimant_email": "john.smith@email.com",
+    "claimant_phone": "555-987-6543",
+    "claimant_address": "123 Main St, Tampa, FL 33601",
+    "issue_summary": "Transmission issues reported - grinding noise when shifting",
+    "total_estimate": 767.50
   }
 }
 ```
@@ -461,6 +490,8 @@ Add the human review UI with data entry for Agent2 input.
 - Simplified approach: No comparison logic between Agent1 and reviewer data
 - Reviewer's `claim_data` goes directly to Agent2 when provided
 - Form URL: `http://localhost:7071/api/review/{instance_id}`
+- Form pre-fills from `extracted_info` (merged superset of email + document extractions)
+- Claimant address field added to form (extracted from document)
 
 ---
 
@@ -549,6 +580,30 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 
 ---
 
+## Version Control
+
+### Repository
+- **GitHub:** https://github.com/sujit-magicws-ai/insurance-claims-agent-orchestrator
+- **Branch:** main
+- **Initial Commit:** 2026-02-01
+
+### Files Tracked
+- All Python source files (function_app/, activities/, shared/, tests/)
+- Configuration files (host.json, requirements.txt)
+- Documentation (*.md files)
+- Static files (static/review.html)
+
+### Files Excluded (.gitignore)
+- Python artifacts (__pycache__, *.pyc, .eggs/, etc.)
+- Virtual environments (.venv, env/)
+- Azure Functions local files (local.settings.json, .python_packages/)
+- IDE files (.vscode/, .idea/)
+- Secrets and credentials (*.pem, *.key, credentials.json)
+- Azurite emulator data (__azurite_db_*, __blobstorage__/)
+- Logs and temp files (*.log, temp/, .claude/)
+
+---
+
 ## Issues & Blockers Log
 
 | Date | Phase | Issue | Resolution | Status |
@@ -559,6 +614,9 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 2026-02-02 | 5 | Agent2 rules_failed validation error | Changed list[str] to list[Any] in model | Resolved |
 | 2026-02-02 | 5 | Agent2 decision type not in Literal | Changed Literal to str for flexibility | Resolved |
 | 2026-02-02 | 5 | approved_amount/deductible None values | Made fields Optional[float] | Resolved |
+| 2026-02-02 | 6 | Field name mismatch after extraction restructure | Updated function_app.py to use `total_estimate` | Resolved |
+| 2026-02-02 | 6 | Mock response used old extraction structure | Updated `_get_mock_agent1_response()` | Resolved |
+| 2026-02-02 | 6 | Tests used old field names | Updated test_models.py for new structure | Resolved |
 
 ---
 
@@ -577,4 +635,10 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 2026-02-02 | Phase 5 completed - real Agent2 integration, full orchestration flow | Claude |
 | 2026-02-02 | Phase 6 completed - Review UI with claim_data input for Agent2 | Claude |
 | 2026-02-02 | **Project completed** - All 6 phases implemented and tested | Claude |
+| 2026-02-02 | Added `EmailBodyExtraction` model for email-specific extraction | Claude |
+| 2026-02-02 | Restructured Agent1 output: `email_body_extraction`, `document_extraction`, `extracted_info` | Claude |
+| 2026-02-02 | Added 7 contract type definitions to Agent1 prompt (VSC, GAP, T&W, PPM, Appearance, Theft, Key) | Claude |
+| 2026-02-02 | Implemented merge rules (Document > Email, except email/issue_summary) | Claude |
+| 2026-02-02 | Updated mock responses and tests for new extraction structure | Claude |
+| 2026-02-02 | Initialized git repository and pushed to GitHub | - |
 
