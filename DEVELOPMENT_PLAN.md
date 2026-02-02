@@ -17,10 +17,11 @@
 | 4 | HITL External Event & Approval Endpoints | ✅ Completed | 2026-02-02 | 2026-02-02 |
 | 5 | Real Agent2 Integration & Full Flow | ✅ Completed | 2026-02-02 | 2026-02-02 |
 | 6 | Review UI & Notifications | ✅ Completed | 2026-02-02 | 2026-02-02 |
+| 7 | Claims Dashboard & Enhanced UI | ✅ Completed | 2026-02-02 | 2026-02-02 |
 
 **Legend:** ⬜ Not Started | 🔄 In Progress | ✅ Completed | ⏸️ Blocked
 
-> **Note:** Original 8-phase plan consolidated to 6 phases. Real agent integration moved earlier (Phase 3) since agents were already deployed and tested.
+> **Note:** Original 8-phase plan consolidated to 6 phases. Real agent integration moved earlier (Phase 3) since agents were already deployed and tested. Phase 7 added for stakeholder demo UI.
 
 ---
 
@@ -495,6 +496,159 @@ Add the human review UI with data entry for Agent2 input.
 
 ---
 
+## Phase 7: Claims Dashboard & Enhanced UI
+
+### Objective
+Build a comprehensive Claims Dashboard for stakeholder demos without using Postman, and enhance the Manual Estimate page with better context.
+
+### Deliverables
+- [x] `static/dashboard.html` - Claims Dashboard with real-time tracking
+- [x] `GET /api/dashboard` endpoint to serve dashboard
+- [x] `GET /api/claims` endpoint to list all claims
+- [x] New Claim submission form (replaces Postman for demos)
+- [x] Enhanced `review.html` with workflow timeline
+- [x] Classifier Agent decision context in Manual Estimate page
+- [x] Stage timestamps tracking throughout orchestration
+- [x] Robust JSON parsing for agent responses
+
+### Agent Naming Convention
+| Internal Name | Display Name |
+|---------------|--------------|
+| Agent1 | Claim Classifier Agent |
+| Agent2 | Claim Adjudicator Agent |
+| Human Review | Manual Claim Damage Estimate |
+
+### Dashboard Features (dashboard.html)
+
+**Header & Stats:**
+- [x] Total claims counter
+- [x] Pending claims counter (awaiting estimate)
+- [x] Completed claims counter
+- [x] Auto-refresh toggle (10s interval)
+
+**New Claim Form:**
+- [x] Claim ID (auto-generated or manual)
+- [x] Email Subject
+- [x] Email Body (textarea)
+- [x] Attachment URL
+- [x] Sender Email
+- [x] Submit button with loading state
+
+**Claims Table:**
+- [x] Sortable columns (Claim ID, Status, Type, Estimate, Created)
+- [x] Status badges with color coding
+- [x] Search/filter functionality
+- [x] View Details button (opens modal)
+- [x] Manual Estimate link (opens in new tab when awaiting)
+- [x] Change detection with row highlighting
+
+**Detail Modal:**
+- [x] Full claim information display
+- [x] Workflow Timeline with timestamps
+- [x] Agent outputs display
+- [x] Status history
+
+### Enhanced Review Page (review.html)
+
+**Page Header:**
+- [x] Claim ID and status
+- [x] Current step indicator
+
+**Workflow Timeline:**
+- [x] Claim Received (timestamp)
+- [x] Classifier Processing (timestamp)
+- [x] Awaiting Manual Estimate (timestamp)
+- [x] Adjudicator Processing (future)
+- [x] Decision (future)
+
+**Classifier Agent Decision Section:**
+- [x] Classification display (claim type, sub-type, component)
+- [x] Confidence score with progress bar
+- [x] Justification text
+- [x] Document extraction summary
+- [x] Flags display (missing info, concerns)
+
+**Manual Estimate Form:**
+- [x] All claim data fields (claimant, contract, vehicle, repair)
+- [x] Submit Estimate button (no approve/reject decision)
+- [x] Reviewer email field
+
+### API Endpoints Added
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/dashboard` | GET | Serve Claims Dashboard HTML |
+| `/api/claims` | GET | List all claims with status |
+| `/api/claims/approve/{id}` | POST | Submit estimate (renamed from approve) |
+
+### Stage Timestamps Tracking
+
+Timestamps recorded at each stage for timeline display:
+
+| Stage | Timestamp Key |
+|-------|---------------|
+| Claim received | `received` |
+| Classifier started | `classifier_started` |
+| Classifier completed | `classifier_completed` |
+| Awaiting estimate | `awaiting_started` |
+| Estimate submitted | `estimate_submitted` |
+| Adjudicator started | `adjudicator_started` |
+| Adjudicator completed | `adjudicator_completed` |
+| Timeout (if applicable) | `timeout` |
+
+### Agent Response JSON Parsing
+
+Enhanced `agent_client.py` to handle malformed JSON from Azure AI Foundry agents:
+
+| Issue | Fix |
+|-------|-----|
+| Arithmetic expressions (`285.00 + 45.00`) | Evaluate and replace with result (`330.00`) |
+| Trailing commas | Remove before parsing |
+| Missing commas between fields | Insert automatically |
+| Other formatting issues | json5 fallback parser |
+
+**Retry Logic:**
+- JSON parsing: 3 strategies (direct, fix, json5)
+- Agent invocation: Up to 3 attempts with 1s delay
+
+### Testing Phase 7
+
+**Test 7.1: Dashboard**
+1. [x] Navigate to `http://localhost:7071/api/dashboard`
+2. [x] Verify dashboard loads with stats
+3. [x] Submit new claim via form
+4. [x] Verify claim appears in table
+5. [x] Verify auto-refresh updates status
+
+**Test 7.2: New Claim Flow**
+1. [x] Fill out New Claim form
+2. [x] Submit claim
+3. [x] Verify orchestration starts
+4. [x] Verify status changes: Classifier Processing → Awaiting Estimate
+
+**Test 7.3: Manual Estimate with Timeline**
+1. [x] Click "Manual Estimate" link for pending claim
+2. [x] Verify timeline displays with timestamps
+3. [x] Verify Classifier Agent decision section shows
+4. [x] Submit estimate
+5. [x] Verify Adjudicator processes claim
+
+**Test 7.4: Full Cycle**
+1. [x] Submit claim via dashboard
+2. [x] Wait for Classifier Agent
+3. [x] Submit Manual Estimate
+4. [x] Wait for Adjudicator Agent
+5. [x] Verify final decision (APPROVED/DENIED/MANUAL_REVIEW)
+
+### Notes
+- Dashboard URL: `http://localhost:7071/api/dashboard`
+- Manual Estimate links open in new tab for better workflow
+- Submit-only flow (no approve/reject) - Adjudicator makes decision
+- JSON parsing handles agent arithmetic expressions (common issue)
+- Stage timestamps enable accurate timeline display
+
+---
+
 ## Environment Configuration
 
 ### Local Development
@@ -568,8 +722,8 @@ AGENT_MOCK_MODE=false  # Set to true to use mock responses
 ## Dependencies Between Phases
 
 ```
-Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 ──→ Phase 6
-(Setup)    (Models)   (Agent1)    (HITL)     (Agent2)    (UI)
+Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 ──→ Phase 6 ──→ Phase 7
+(Setup)    (Models)   (Agent1)    (HITL)     (Agent2)    (UI)      (Dashboard)
 ```
 
 - **Phase 1-2**: Project setup, no Azure dependency (can use mock mode)
@@ -577,6 +731,7 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 - **Phase 4**: Adds HITL approval pattern (works with real Agent1)
 - **Phase 5**: Adds real Agent2 integration
 - **Phase 6**: Adds review UI (can be developed in parallel with Phase 5)
+- **Phase 7**: Adds Claims Dashboard for stakeholder demos (depends on Phase 6)
 
 ---
 
@@ -591,7 +746,7 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 - All Python source files (function_app/, activities/, shared/, tests/)
 - Configuration files (host.json, requirements.txt)
 - Documentation (*.md files)
-- Static files (static/review.html)
+- Static files (static/dashboard.html, static/review.html)
 
 ### Files Excluded (.gitignore)
 - Python artifacts (__pycache__, *.pyc, .eggs/, etc.)
@@ -617,6 +772,8 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 2026-02-02 | 6 | Field name mismatch after extraction restructure | Updated function_app.py to use `total_estimate` | Resolved |
 | 2026-02-02 | 6 | Mock response used old extraction structure | Updated `_get_mock_agent1_response()` | Resolved |
 | 2026-02-02 | 6 | Tests used old field names | Updated test_models.py for new structure | Resolved |
+| 2026-02-02 | 7 | Agent returns arithmetic in JSON (`285.00 + 45.00`) | Added expression evaluation in JSON parser | Resolved |
+| 2026-02-02 | 7 | Claims list API errors (get_status_by) | Simplified to filter after get_status_all | Resolved |
 
 ---
 
@@ -639,6 +796,18 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 2026-02-02 | Restructured Agent1 output: `email_body_extraction`, `document_extraction`, `extracted_info` | Claude |
 | 2026-02-02 | Added 7 contract type definitions to Agent1 prompt (VSC, GAP, T&W, PPM, Appearance, Theft, Key) | Claude |
 | 2026-02-02 | Implemented merge rules (Document > Email, except email/issue_summary) | Claude |
-| 2026-02-02 | Updated mock responses and tests for new extraction structure | Claude |
+| 2026-02-02 | Updated mock responses and tests for new extraction structure | - |
 | 2026-02-02 | Initialized git repository and pushed to GitHub | - |
+| 2026-02-02 | Phase 7 started - Claims Dashboard for stakeholder demos | - |
+| 2026-02-02 | Added Claims Dashboard (dashboard.html) with real-time claim tracking | - |
+| 2026-02-02 | Added New Claim submission form (replaces Postman for demos) | - |
+| 2026-02-02 | Renamed agents: Claim Classifier Agent, Claim Adjudicator Agent | - |
+| 2026-02-02 | Added workflow timeline with stage timestamps to review.html | - |
+| 2026-02-02 | Added Classifier Agent decision context to Manual Estimate page | - |
+| 2026-02-02 | Changed Manual Estimate from approve/reject to submit-only | - |
+| 2026-02-02 | Added GET /api/claims endpoint for listing all claims | - |
+| 2026-02-02 | Added GET /api/dashboard endpoint to serve dashboard | - |
+| 2026-02-02 | Added robust JSON parsing for agent arithmetic expressions | - |
+| 2026-02-02 | Added json5 fallback parser and agent retry logic | - |
+| 2026-02-02 | **Phase 7 completed** - Claims Dashboard & Enhanced UI | - |
 
