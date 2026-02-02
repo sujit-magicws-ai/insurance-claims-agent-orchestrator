@@ -1,0 +1,320 @@
+{
+  "info": {
+    "name": "HITL Durable Functions Orchestration",
+    "description": "Collection for testing Azure Durable Functions HITL orchestration with AI Foundry agents",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:7071",
+      "type": "string"
+    },
+    {
+      "key": "instance_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "claim_id",
+      "value": "CLM-2026-00142",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Check if the function app is running"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Orchestration Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runtime/webhooks/durabletask/instances/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["runtime", "webhooks", "durabletask", "instances", "{{instance_id}}"]
+            },
+            "description": "Get the status of an orchestration instance"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Orchestrations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runtime/webhooks/durabletask/instances",
+              "host": ["{{base_url}}"],
+              "path": ["runtime", "webhooks", "durabletask", "instances"]
+            },
+            "description": "List all orchestration instances"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Phase 3 - Basic Orchestration",
+      "item": [
+        {
+          "name": "Start Claim Orchestration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.instance_id) {",
+                  "    pm.collectionVariables.set('instance_id', jsonData.instance_id);",
+                  "    console.log('Set instance_id to: ' + jsonData.instance_id);",
+                  "}",
+                  "",
+                  "pm.test('Status code is 202', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('Response has instance_id', function () {",
+                  "    pm.expect(jsonData).to.have.property('instance_id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claim_id\": \"{{claim_id}}\",\n  \"email_content\": \"Hi, I'm submitting a claim for my 2022 Honda Accord. The transmission has been making a grinding noise when shifting gears. I took it to ABC Auto Service and they diagnosed it as a transmission solenoid failure. The repair estimate is $767.50. I've attached the diagnostic report and repair estimate. Please process this claim under my Gold VSC coverage. Thanks, John Smith\",\n  \"attachment_url\": \"https://storage.example.com/claims/{{claim_id}}/documents.pdf\",\n  \"sender_email\": \"john.smith@email.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/claims/start",
+              "host": ["{{base_url}}"],
+              "path": ["api", "claims", "start"]
+            },
+            "description": "Start a new claim orchestration. This will:\n1. Validate the claim request\n2. Start the orchestrator\n3. Call Agent1 for classification\n4. Return the instance_id for tracking"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Claim Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has runtimeStatus', function () {",
+                  "    pm.expect(jsonData).to.have.property('runtimeStatus');",
+                  "});",
+                  "",
+                  "pm.test('Orchestration completed', function () {",
+                  "    pm.expect(jsonData.runtimeStatus).to.equal('Completed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runtime/webhooks/durabletask/instances/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["runtime", "webhooks", "durabletask", "instances", "{{instance_id}}"]
+            },
+            "description": "Check the status of the claim orchestration"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Phase 4-6 - HITL Approval",
+      "item": [
+        {
+          "name": "Approve Claim",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Approval successful', function () {",
+                  "    pm.expect(jsonData.success).to.equal(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approved\",\n  \"reviewer\": \"reviewer@company.com\",\n  \"comments\": \"Claim verified and approved for processing\",\n  \"claim_amounts\": {\n    \"total_parts_cost\": 330.00,\n    \"total_labor_cost\": 437.50,\n    \"total_estimate\": 767.50,\n    \"deductible\": 100.00\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/claims/approve/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "claims", "approve", "{{instance_id}}"]
+            },
+            "description": "Approve a claim that is waiting for human review (Phase 4+)"
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"rejected\",\n  \"reviewer\": \"reviewer@company.com\",\n  \"comments\": \"Missing required documentation. Please resubmit with diagnostic report.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/claims/approve/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "claims", "approve", "{{instance_id}}"]
+            },
+            "description": "Reject a claim that is waiting for human review (Phase 4+)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Claim Status (Custom)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/claims/status/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "claims", "status", "{{instance_id}}"]
+            },
+            "description": "Get claim status via custom endpoint (Phase 5+)"
+          },
+          "response": []
+        },
+        {
+          "name": "Review UI Page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/claims/review/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "claims", "review", "{{instance_id}}"]
+            },
+            "description": "Open the review UI page in browser (Phase 8)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin - Manage Orchestrations",
+      "item": [
+        {
+          "name": "Terminate Orchestration",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runtime/webhooks/durabletask/instances/{{instance_id}}/terminate?reason=Manual%20termination",
+              "host": ["{{base_url}}"],
+              "path": ["runtime", "webhooks", "durabletask", "instances", "{{instance_id}}", "terminate"],
+              "query": [
+                {
+                  "key": "reason",
+                  "value": "Manual%20termination"
+                }
+              ]
+            },
+            "description": "Terminate a running orchestration"
+          },
+          "response": []
+        },
+        {
+          "name": "Purge Orchestration History",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runtime/webhooks/durabletask/instances/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["runtime", "webhooks", "durabletask", "instances", "{{instance_id}}"]
+            },
+            "description": "Delete orchestration history"
+          },
+          "response": []
+        },
+        {
+          "name": "Raise Event (Manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approved\",\n  \"reviewer\": \"manual@test.com\",\n  \"comments\": \"Manual event raise\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/runtime/webhooks/durabletask/instances/{{instance_id}}/raiseEvent/ApprovalDecision",
+              "host": ["{{base_url}}"],
+              "path": ["runtime", "webhooks", "durabletask", "instances", "{{instance_id}}", "raiseEvent", "ApprovalDecision"]
+            },
+            "description": "Manually raise the ApprovalDecision event to wake an orchestration"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

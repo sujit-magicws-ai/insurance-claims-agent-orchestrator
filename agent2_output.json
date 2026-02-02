@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-2026-00142",
+  "decision": "APPROVED",
+  "decision_type": "AUTO",
+  "approved_amount": 667.5,
+  "deductible_applied": 100,
+  "missing_documents": [],
+  "rules_evaluated": [
+    "AA-01",
+    "AA-02",
+    "AA-03",
+    "AA-04",
+    "AA-05",
+    "AA-06",
+    "AA-07",
+    "AA-08"
+  ],
+  "rules_passed": [
+    "AA-01",
+    "AA-02",
+    "AA-03",
+    "AA-04",
+    "AA-05",
+    "AA-06",
+    "AA-07",
+    "AA-08"
+  ],
+  "rules_failed": [],
+  "rules_triggered": [],
+  "priority": null,
+  "assigned_queue": null,
+  "reason": "All required documents are present, the contract is active, the claim is within the coverage period and mileage limit, the repair estimate ($767.5) is below the VSC auto-approve threshold ($1,500), there are no pre-existing conditions or recent claims, and the repair is performed at an authorized facility. No manual review rules were triggered. Claim AUTO-APPROVED for the net amount after deductible.",
+  "evaluation_summary": {
+    "contract_status": "Active",
+    "coverage_valid": true,
+    "mileage_valid": true,
+    "estimate_amount": 767.5,
+    "auto_approve_threshold": 1500,
+    "within_threshold": true,
+    "facility_authorized": true,
+    "documents_complete": true
+  }
+}

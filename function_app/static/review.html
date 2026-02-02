@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Review</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f5f5f5; }
+        .review-container { max-width: 900px; margin: 20px auto; }
+        .card { margin-bottom: 20px; }
+        .card-header { font-weight: 600; }
+        .agent1-summary { background-color: #e7f3ff; border-left: 4px solid #0066cc; padding: 15px; margin-bottom: 20px; }
+        .form-label { font-weight: 500; }
+        .btn-approve { background-color: #28a745; border-color: #28a745; }
+        .btn-reject { background-color: #dc3545; border-color: #dc3545; }
+        .loading { text-align: center; padding: 50px; }
+        .error-message { color: #dc3545; }
+        .success-message { color: #28a745; }
+        #statusMessage { margin-top: 20px; padding: 15px; border-radius: 5px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="review-container">
+        <h2 class="mb-4">Claim Review</h2>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading claim data...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="alert alert-danger" style="display: none;">
+            <h5>Error Loading Claim</h5>
+            <p id="errorMessage"></p>
+        </div>
+
+        <!-- Review Form -->
+        <div id="reviewForm" style="display: none;">
+            <!-- Agent1 Summary -->
+            <div class="agent1-summary">
+                <h5>Agent1 Classification Summary</h5>
+                <div class="row">
+                    <div class="col-md-3"><strong>Claim ID:</strong> <span id="summaryClaimId">-</span></div>
+                    <div class="col-md-3"><strong>Type:</strong> <span id="summaryClaimType">-</span></div>
+                    <div class="col-md-3"><strong>Confidence:</strong> <span id="summaryConfidence">-</span></div>
+                    <div class="col-md-3"><strong>Status:</strong> <span id="summaryStatus" class="badge bg-warning">Awaiting Review</span></div>
+                </div>
+                <div class="mt-2"><strong>Justification:</strong> <span id="summaryJustification">-</span></div>
+            </div>
+
+            <form id="claimForm">
+                <!-- Claimant Information -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">Claimant Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="claimantName" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="claimantName" name="claimant.name">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="claimantEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="claimantEmail" name="claimant.email">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="claimantPhone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="claimantPhone" name="claimant.phone">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="claimantAddress" class="form-label">Address</label>
+                                <input type="text" class="form-control" id="claimantAddress" name="claimant.address">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contract Information -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">Contract Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="contractNumber" class="form-label">Contract Number</label>
+                                <input type="text" class="form-control" id="contractNumber" name="contract.contract_number">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="productType" class="form-label">Product Type</label>
+                                <select class="form-select" id="productType" name="contract.product_type">
+                                    <option value="VSC">VSC (Vehicle Service Contract)</option>
+                                    <option value="GAP">GAP (Total Loss Protection)</option>
+                                    <option value="Tire & Wheel">Tire & Wheel / Road Hazard</option>
+                                    <option value="PPM">PPM (Pre-Paid Maintenance)</option>
+                                    <option value="Appearance">Appearance Protection</option>
+                                    <option value="Theft">Theft Protection</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="coverageLevel" class="form-label">Coverage Level</label>
+                                <select class="form-select" id="coverageLevel" name="contract.coverage_level">
+                                    <option value="Bronze">Bronze</option>
+                                    <option value="Silver">Silver</option>
+                                    <option value="Gold">Gold</option>
+                                    <option value="Platinum">Platinum</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="contractStatus" class="form-label">Status</label>
+                                <select class="form-select" id="contractStatus" name="contract.status">
+                                    <option value="Active">Active</option>
+                                    <option value="Expired">Expired</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="effectiveDate" class="form-label">Effective Date</label>
+                                <input type="date" class="form-control" id="effectiveDate" name="contract.effective_date">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="expirationDate" class="form-label">Expiration Date</label>
+                                <input type="date" class="form-control" id="expirationDate" name="contract.expiration_date">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="deductible" class="form-label">Deductible ($)</label>
+                                <input type="number" class="form-control" id="deductible" name="contract.deductible" min="0" step="0.01" value="100">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="maxClaimAmount" class="form-label">Max Claim Amount ($)</label>
+                                <input type="number" class="form-control" id="maxClaimAmount" name="contract.max_claim_amount" min="0" step="0.01" value="5000">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="mileageLimit" class="form-label">Mileage Limit</label>
+                                <input type="number" class="form-control" id="mileageLimit" name="contract.mileage_limit" min="0" value="100000">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vehicle Information -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">Vehicle Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-2 mb-3">
+                                <label for="vehicleYear" class="form-label">Year</label>
+                                <input type="number" class="form-control" id="vehicleYear" name="vehicle.year" min="1900" max="2030">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="vehicleMake" class="form-label">Make</label>
+                                <input type="text" class="form-control" id="vehicleMake" name="vehicle.make">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="vehicleModel" class="form-label">Model</label>
+                                <input type="text" class="form-control" id="vehicleModel" name="vehicle.model">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="vehicleVin" class="form-label">VIN</label>
+                                <input type="text" class="form-control" id="vehicleVin" name="vehicle.vin" maxlength="17">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="currentMileage" class="form-label">Current Mileage</label>
+                                <input type="number" class="form-control" id="currentMileage" name="vehicle.current_mileage" min="0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="purchaseMileage" class="form-label">Purchase Mileage</label>
+                                <input type="number" class="form-control" id="purchaseMileage" name="vehicle.purchase_mileage" min="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Repair Information -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">Repair Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="facilityName" class="form-label">Facility Name</label>
+                                <input type="text" class="form-control" id="facilityName" name="repair.facility_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="facilityType" class="form-label">Facility Type</label>
+                                <select class="form-select" id="facilityType" name="repair.facility_type">
+                                    <option value="Authorized Dealer">Authorized Dealer</option>
+                                    <option value="Independent Shop">Independent Shop</option>
+                                    <option value="Chain Store">Chain Store</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="diagnosis" class="form-label">Diagnosis</label>
+                                <textarea class="form-control" id="diagnosis" name="repair.diagnosis" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="repairType" class="form-label">Repair Type</label>
+                                <input type="text" class="form-control" id="repairType" name="repair.repair_type" placeholder="e.g., Mechanical - Transmission">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="totalParts" class="form-label">Total Parts ($)</label>
+                                <input type="number" class="form-control" id="totalParts" name="repair.total_parts" min="0" step="0.01" value="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="totalLabor" class="form-label">Total Labor ($)</label>
+                                <input type="number" class="form-control" id="totalLabor" name="repair.total_labor" min="0" step="0.01" value="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="totalEstimate" class="form-label">Total Estimate ($)</label>
+                                <input type="number" class="form-control" id="totalEstimate" name="repair.total_estimate" min="0" step="0.01" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">Documents</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="docRepairEstimate" name="documents.repair_estimate">
+                                    <label class="form-check-label" for="docRepairEstimate">Repair Estimate</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="docDiagnosticReport" name="documents.diagnostic_report">
+                                    <label class="form-check-label" for="docDiagnosticReport">Diagnostic Report</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="docPhotos" name="documents.photos">
+                                    <label class="form-check-label" for="docPhotos">Photos</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="docPriorAuth" name="documents.prior_authorization">
+                                    <label class="form-check-label" for="docPriorAuth">Prior Authorization</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reviewer Decision -->
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">Reviewer Decision</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reviewerEmail" class="form-label">Reviewer Email *</label>
+                                <input type="email" class="form-control" id="reviewerEmail" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="reviewerComments" class="form-label">Comments</label>
+                                <textarea class="form-control" id="reviewerComments" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-approve btn-lg text-white me-3" onclick="submitDecision('approved')">
+                                    Approve Claim
+                                </button>
+                                <button type="button" class="btn btn-reject btn-lg text-white" onclick="submitDecision('rejected')">
+                                    Reject Claim
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Status Message -->
+            <div id="statusMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        // Get instance_id from URL
+        const pathParts = window.location.pathname.split('/');
+        const instanceId = pathParts[pathParts.length - 1];
+        let claimData = null;
+
+        // Load claim data on page load
+        document.addEventListener('DOMContentLoaded', loadClaimData);
+
+        async function loadClaimData() {
+            try {
+                const response = await fetch(`/api/claims/status/${instanceId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.message || 'Failed to load claim data');
+                    return;
+                }
+
+                if (data.custom_status?.step !== 'awaiting_approval') {
+                    showError(`Claim is not awaiting approval. Current status: ${data.custom_status?.step || data.runtime_status}`);
+                    return;
+                }
+
+                claimData = data;
+                populateForm(data);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('reviewForm').style.display = 'block';
+
+            } catch (error) {
+                showError('Error loading claim data: ' + error.message);
+            }
+        }
+
+        function populateForm(data) {
+            const agent1Output = data.custom_status?.agent1_output || {};
+            const classification = agent1Output.classification || {};
+            // extracted_info now contains merged data from email + document
+            const extractedInfo = agent1Output.extracted_info || {};
+            const docExtraction = agent1Output.document_extraction || {};
+
+            // Summary section
+            document.getElementById('summaryClaimId').textContent = agent1Output.claim_id || '-';
+            document.getElementById('summaryClaimType').textContent =
+                `${classification.claim_type || '-'} / ${classification.sub_type || '-'} / ${classification.component_category || '-'}`;
+            document.getElementById('summaryConfidence').textContent =
+                agent1Output.confidence_score ? (agent1Output.confidence_score * 100).toFixed(0) + '%' : '-';
+            document.getElementById('summaryJustification').textContent = agent1Output.justification || '-';
+
+            // Pre-fill form fields from merged extracted_info
+            // Claimant (now directly available in extracted_info)
+            setValue('claimantName', extractedInfo.claimant_name);
+            setValue('claimantEmail', extractedInfo.claimant_email);
+            setValue('claimantPhone', extractedInfo.claimant_phone);
+            setValue('claimantAddress', extractedInfo.claimant_address);
+
+            // Contract
+            setValue('contractNumber', extractedInfo.contract_number);
+            setValue('productType', classification.claim_type || 'VSC');
+            setValue('coverageLevel', 'Gold');
+            setValue('contractStatus', 'Active');
+            setValue('deductible', 100);
+            setValue('maxClaimAmount', 5000);
+            setValue('mileageLimit', 100000);
+
+            // Vehicle (now directly available in extracted_info)
+            setValue('vehicleYear', extractedInfo.vehicle_year);
+            setValue('vehicleMake', extractedInfo.vehicle_make);
+            setValue('vehicleModel', extractedInfo.vehicle_model);
+            setValue('vehicleVin', extractedInfo.vehicle_vin);
+            setValue('currentMileage', '');
+            setValue('purchaseMileage', '');
+
+            // Repair
+            setValue('facilityName', extractedInfo.repair_facility);
+            setValue('facilityType', 'Authorized Dealer');
+            setValue('diagnosis', extractedInfo.diagnosis || extractedInfo.issue_summary);
+            setValue('repairType', `${classification.sub_type || 'Mechanical'} - ${classification.component_category || 'General'}`);
+            setValue('totalParts', extractedInfo.total_parts || 0);
+            setValue('totalLabor', extractedInfo.total_labor || 0);
+            setValue('totalEstimate', extractedInfo.total_estimate || 0);
+
+            // Documents
+            setChecked('docRepairEstimate', true);
+            setChecked('docDiagnosticReport', docExtraction.status === 'success');
+            setChecked('docPhotos', false);
+            setChecked('docPriorAuth', false);
+        }
+
+        function setValue(id, value) {
+            const el = document.getElementById(id);
+            if (el && value !== null && value !== undefined) {
+                el.value = value;
+            }
+        }
+
+        function setChecked(id, checked) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.checked = checked;
+            }
+        }
+
+        function getValue(id) {
+            const el = document.getElementById(id);
+            return el ? el.value : '';
+        }
+
+        function getChecked(id) {
+            const el = document.getElementById(id);
+            return el ? el.checked : false;
+        }
+
+        function getNumericValue(id) {
+            const val = getValue(id);
+            return val ? parseFloat(val) : null;
+        }
+
+        function buildClaimData() {
+            return {
+                claimant: {
+                    name: getValue('claimantName') || null,
+                    email: getValue('claimantEmail') || null,
+                    phone: getValue('claimantPhone') || null,
+                    address: getValue('claimantAddress') || null
+                },
+                contract: {
+                    contract_number: getValue('contractNumber') || null,
+                    product_type: getValue('productType'),
+                    coverage_level: getValue('coverageLevel'),
+                    status: getValue('contractStatus'),
+                    effective_date: getValue('effectiveDate') || null,
+                    expiration_date: getValue('expirationDate') || null,
+                    deductible: getNumericValue('deductible') || 0,
+                    max_claim_amount: getNumericValue('maxClaimAmount') || 5000,
+                    mileage_limit: getNumericValue('mileageLimit') || 100000
+                },
+                vehicle: {
+                    year: getNumericValue('vehicleYear'),
+                    make: getValue('vehicleMake') || null,
+                    model: getValue('vehicleModel') || null,
+                    vin: getValue('vehicleVin') || null,
+                    current_mileage: getNumericValue('currentMileage'),
+                    purchase_mileage: getNumericValue('purchaseMileage')
+                },
+                repair: {
+                    facility_name: getValue('facilityName') || null,
+                    facility_type: getValue('facilityType'),
+                    diagnosis: getValue('diagnosis') || null,
+                    repair_type: getValue('repairType') || null,
+                    total_parts: getNumericValue('totalParts') || 0,
+                    total_labor: getNumericValue('totalLabor') || 0,
+                    total_estimate: getNumericValue('totalEstimate') || 0
+                },
+                documents: {
+                    repair_estimate: getChecked('docRepairEstimate'),
+                    diagnostic_report: getChecked('docDiagnosticReport'),
+                    photos: getChecked('docPhotos'),
+                    prior_authorization: getChecked('docPriorAuth')
+                }
+            };
+        }
+
+        async function submitDecision(decision) {
+            const reviewerEmail = getValue('reviewerEmail');
+            if (!reviewerEmail) {
+                alert('Please enter your email address');
+                return;
+            }
+
+            const payload = {
+                decision: decision,
+                reviewer: reviewerEmail,
+                comments: getValue('reviewerComments'),
+                claim_data: buildClaimData()
+            };
+
+            try {
+                const response = await fetch(`/api/claims/approve/${instanceId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus(`Claim ${decision} successfully!`, 'success');
+                    // Disable form after submission
+                    document.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = true);
+                } else {
+                    showStatus(`Error: ${result.message || result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('Error submitting decision: ' + error.message, 'error');
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorState').style.display = 'block';
+        }
+
+        function showStatus(message, type) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = message;
+            el.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            el.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

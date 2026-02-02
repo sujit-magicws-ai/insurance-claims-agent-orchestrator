@@ -1,0 +1,16 @@
+# Azure Functions Core
+azure-functions>=1.21.0
+azure-functions-durable>=1.4.0
+
+# Azure Identity & AI
+azure-identity>=1.19.0
+azure-ai-projects>=1.0.0b7
+azure-ai-agents>=1.0.0
+openai
+
+# Data Validation
+pydantic>=2.10.0
+
+# Utilities
+python-dateutil>=2.9.0
+python-dotenv

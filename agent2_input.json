@@ -1,0 +1,66 @@
+{
+  "claim_id": "CLM-2026-00142",
+  "submission_date": "2026-02-01T10:30:00Z",
+  "claimant": {
+    "name": "John Smith",
+    "email": "john.smith@email.com",
+    "phone": "555-123-4567"
+  },
+  "contract": {
+    "contract_number": "VSC-2024-78542",
+    "product_type": "VSC",
+    "coverage_level": "Gold",
+    "effective_date": "2024-03-15",
+    "expiration_date": "2029-03-15",
+    "deductible": 100,
+    "max_claim_amount": 5000,
+    "status": "Active"
+  },
+  "vehicle": {
+    "year": 2022,
+    "make": "Honda",
+    "model": "Accord",
+    "vin": "1HGCV1F34NA000123",
+    "current_mileage": 45000,
+    "mileage_at_purchase": 12000,
+    "mileage_limit": 100000
+  },
+  "issue": {
+    "description": "Transmission making grinding noise when shifting",
+    "symptoms": ["grinding noise", "hard shifting", "delayed engagement"],
+    "date_noticed": "2026-01-28",
+    "is_vehicle_driveable": true,
+    "is_safety_concern": false
+  },
+  "repair": {
+    "facility": {
+      "name": "ABC Auto Service",
+      "type": "Authorized",
+      "address": "123 Main St, Tampa, FL"
+    },
+    "diagnosis": "Transmission solenoid failure",
+    "repair_type": "Mechanical",
+    "parts": [
+      {"name": "Transmission Solenoid Pack", "part_number": "28260-RPC-004", "cost": 285.00},
+      {"name": "Transmission Fluid", "part_number": "ATF-DW1", "cost": 45.00}
+    ],
+    "labor_hours": 3.5,
+    "labor_rate": 125.00,
+    "total_parts_cost": 330.00,
+    "total_labor_cost": 437.50,
+    "total_estimate": 767.50
+  },
+  "documents": {
+    "repair_estimate": true,
+    "diagnostic_report": true,
+    "photos": true,
+    "prior_authorization": false
+  },
+  "flags": {
+    "is_pre_existing": false,
+    "is_maintenance_related": false,
+    "is_accident_related": false,
+    "has_prior_claims": false,
+    "days_since_last_claim": null
+  }
+}

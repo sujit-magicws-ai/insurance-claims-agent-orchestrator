@@ -1,0 +1,38 @@
+Subject: Claim Submission - Transmission Repair - 2022 Honda Accord                                                      
+  Hi,                                                                                                                   
+  
+  I am submitting a claim for repairs on my vehicle.
+
+  **Vehicle Information:**
+  - Year: 2022
+  - Make: Honda
+  - Model: Accord
+  - VIN: 1HGCV1F34NA000123
+  - Current Mileage: 45,000 miles
+
+  **Contract Information:**
+  - Contract Number: VSC-2024-78542
+  - Coverage Type: Gold VSC
+  - Deductible: $100
+
+  **Issue Description:**
+  My car's transmission has been making a grinding noise when shifting gears for the past week. It started on January   
+  28th, 2026. The vehicle is still driveable but the shifting is delayed and rough.
+
+  **Repair Facility:**
+  ABC Auto Service (Authorized Dealer)
+  123 Main St, Tampa, FL 33601
+  Phone: (813) 555-1234
+
+  **Diagnosis:**
+  The mechanic diagnosed it as a transmission solenoid failure. They provided a repair estimate of $767.50:
+  - Transmission Solenoid Pack: $285.00
+  - Transmission Fluid (ATF-DW1): $45.00
+  - Labor (3.5 hours @ $125/hr): $437.50
+
+  I have attached the diagnostic report and repair estimate. Please process this claim at your earliest convenience.    
+
+  Thank you,
+  John Smith
+  john.smith@email.com
+  Phone: 555-123-4567

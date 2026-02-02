@@ -1,0 +1,43 @@
+# Azure Functions Core
+azure-functions>=1.17.0
+azure-durable-functions>=1.2.9
+
+# Azure Identity & Authentication
+azure-identity>=1.15.0
+
+# Azure AI Foundry / Projects SDK
+azure-ai-projects>=1.0.0b1
+
+# Microsoft Agent Framework (Preview)
+agent-framework[azure]>=0.1.0b1
+
+# OpenAI Integration (used by Azure AI Foundry)
+openai>=1.12.0
+
+# Data Validation
+pydantic>=2.5.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# HTTP Client (for notifications)
+aiohttp>=3.9.0
+requests>=2.31.0
+
+# Logging & Monitoring
+opencensus-ext-azure>=1.1.13
+azure-monitor-opentelemetry>=1.2.0
+
+# Date/Time handling
+python-dateutil>=2.8.2
+
+# JSON handling
+orjson>=3.9.0
+
+# Testing (development only)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# Type hints
+typing-extensions>=4.9.0

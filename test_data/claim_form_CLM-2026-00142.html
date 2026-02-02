@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vehicle Service Contract Claim Form - CLM-2026-00142</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .claim-id {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        .section-title {
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            margin: -10px -10px 10px -10px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .label {
+            font-weight: bold;
+            width: 150px;
+            color: #555;
+        }
+        .value {
+            border-bottom: 1px solid #ccc;
+        }
+        .estimate-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .estimate-table th, .estimate-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .estimate-table th {
+            background: #f5f5f5;
+        }
+        .total-row {
+            font-weight: bold;
+            background: #f0f0f0;
+        }
+        .signature-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-box {
+            width: 45%;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 40px;
+            padding-top: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        @media print {
+            body { margin: 0; padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VEHICLE SERVICE CONTRACT CLAIM FORM</h1>
+        <p>AutoProtect Warranty Services, Inc.</p>
+        <p>Claims Department | 1-800-555-CLAIM | claims@autoprotect.example.com</p>
+    </div>
+
+    <div class="claim-id">
+        CLAIM NUMBER: CLM-2026-00142 | DATE SUBMITTED: February 1, 2026
+    </div>
+
+    <div class="section">
+        <div class="section-title">CLAIMANT INFORMATION</div>
+        <table>
+            <tr>
+                <td class="label">Full Name:</td>
+                <td class="value">John Smith</td>
+                <td class="label">Phone:</td>
+                <td class="value">555-123-4567</td>
+            </tr>
+            <tr>
+                <td class="label">Email:</td>
+                <td class="value">john.smith@email.com</td>
+                <td class="label">Address:</td>
+                <td class="value">456 Oak Avenue, Tampa, FL 33602</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">CONTRACT INFORMATION</div>
+        <table>
+            <tr>
+                <td class="label">Contract Number:</td>
+                <td class="value">VSC-2024-78542</td>
+                <td class="label">Product Type:</td>
+                <td class="value">Vehicle Service Contract (VSC)</td>
+            </tr>
+            <tr>
+                <td class="label">Coverage Level:</td>
+                <td class="value">Gold</td>
+                <td class="label">Deductible:</td>
+                <td class="value">$100.00</td>
+            </tr>
+            <tr>
+                <td class="label">Effective Date:</td>
+                <td class="value">March 15, 2024</td>
+                <td class="label">Expiration Date:</td>
+                <td class="value">March 15, 2029</td>
+            </tr>
+            <tr>
+                <td class="label">Max Claim Amount:</td>
+                <td class="value">$5,000.00</td>
+                <td class="label">Mileage Limit:</td>
+                <td class="value">100,000 miles</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">VEHICLE INFORMATION</div>
+        <table>
+            <tr>
+                <td class="label">Year:</td>
+                <td class="value">2022</td>
+                <td class="label">Make:</td>
+                <td class="value">Honda</td>
+            </tr>
+            <tr>
+                <td class="label">Model:</td>
+                <td class="value">Accord</td>
+                <td class="label">VIN:</td>
+                <td class="value">1HGCV1F34NA000123</td>
+            </tr>
+            <tr>
+                <td class="label">Current Mileage:</td>
+                <td class="value">45,000</td>
+                <td class="label">Mileage at Purchase:</td>
+                <td class="value">12,000</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">ISSUE DESCRIPTION</div>
+        <table>
+            <tr>
+                <td class="label">Date Issue Noticed:</td>
+                <td class="value">January 28, 2026</td>
+            </tr>
+            <tr>
+                <td class="label">Description:</td>
+                <td class="value">Transmission making grinding noise when shifting gears</td>
+            </tr>
+            <tr>
+                <td class="label">Symptoms:</td>
+                <td class="value">Grinding noise, hard shifting, delayed engagement</td>
+            </tr>
+            <tr>
+                <td class="label">Is Vehicle Driveable?</td>
+                <td class="value">Yes</td>
+            </tr>
+            <tr>
+                <td class="label">Is Safety Concern?</td>
+                <td class="value">No</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">REPAIR FACILITY INFORMATION</div>
+        <table>
+            <tr>
+                <td class="label">Facility Name:</td>
+                <td class="value">ABC Auto Service</td>
+                <td class="label">Facility Type:</td>
+                <td class="value">Authorized Dealer</td>
+            </tr>
+            <tr>
+                <td class="label">Address:</td>
+                <td class="value" colspan="3">123 Main St, Tampa, FL 33601</td>
+            </tr>
+            <tr>
+                <td class="label">Phone:</td>
+                <td class="value">(813) 555-1234</td>
+                <td class="label">Service Advisor:</td>
+                <td class="value">Mike Johnson</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">DIAGNOSIS & REPAIR ESTIMATE</div>
+        <table>
+            <tr>
+                <td class="label">Diagnosis:</td>
+                <td class="value">Transmission solenoid failure</td>
+            </tr>
+            <tr>
+                <td class="label">Repair Type:</td>
+                <td class="value">Mechanical - Transmission</td>
+            </tr>
+        </table>
+
+        <table class="estimate-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Part Number</th>
+                    <th>Description</th>
+                    <th style="text-align: right;">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Part</td>
+                    <td>28260-RPC-004</td>
+                    <td>Transmission Solenoid Pack</td>
+                    <td style="text-align: right;">$285.00</td>
+                </tr>
+                <tr>
+                    <td>Part</td>
+                    <td>ATF-DW1</td>
+                    <td>Transmission Fluid (4 quarts)</td>
+                    <td style="text-align: right;">$45.00</td>
+                </tr>
+                <tr>
+                    <td>Labor</td>
+                    <td>-</td>
+                    <td>3.5 hours @ $125.00/hr</td>
+                    <td style="text-align: right;">$437.50</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3">TOTAL PARTS</td>
+                    <td style="text-align: right;">$330.00</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3">TOTAL LABOR</td>
+                    <td style="text-align: right;">$437.50</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3">TOTAL ESTIMATE</td>
+                    <td style="text-align: right;">$767.50</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">DOCUMENTS ATTACHED</div>
+        <table>
+            <tr>
+                <td>☑ Repair Estimate</td>
+                <td>☑ Diagnostic Report</td>
+                <td>☑ Photos of Damage</td>
+                <td>☐ Prior Authorization</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">CERTIFICATION</div>
+        <p>I certify that the information provided in this claim form is true and accurate to the best of my knowledge. I authorize the release of any information necessary to process this claim.</p>
+
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-line">
+                    Claimant Signature: John Smith<br>
+                    Date: February 1, 2026
+                </div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line">
+                    Service Advisor Signature: Mike Johnson<br>
+                    Date: February 1, 2026
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>AutoProtect Warranty Services, Inc. | PO Box 12345, Tampa, FL 33601</p>
+        <p>This form must be submitted within 30 days of repair completion. For questions, call 1-800-555-CLAIM.</p>
+        <p>Form Version: VSC-CLM-2024-01 | Page 1 of 1</p>
+    </div>
+</body>
+</html>
