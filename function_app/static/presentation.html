@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Claims Processing - HITL Orchestration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a237e;
+            --primary-light: #3949ab;
+            --secondary: #ff9800;
+            --success: #4caf50;
+            --accent: #00bcd4;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .hero .subtitle {
+            font-size: 1.4rem;
+            opacity: 0.9;
+            position: relative;
+        }
+        .hero .badge-tech {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            margin: 0.25rem;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
+        /* Section Styles */
+        .section {
+            padding: 4rem 0;
+        }
+        .section-title {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-size: 2.2rem;
+        }
+        .section-subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        /* Workflow Diagram */
+        .workflow-container {
+            background: white;
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .workflow {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .workflow::before {
+            content: '';
+            position: absolute;
+            top: 60px;
+            left: 10%;
+            right: 10%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--success));
+            z-index: 0;
+        }
+        .workflow-step {
+            flex: 1;
+            min-width: 150px;
+            max-width: 200px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+        .step-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2.5rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            position: relative;
+        }
+        .step-icon.agent {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+        .step-icon.human {
+            background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);
+            color: white;
+        }
+        .step-icon.input {
+            background: linear-gradient(135deg, #607d8b 0%, #90a4ae 100%);
+            color: white;
+        }
+        .step-icon.output {
+            background: linear-gradient(135deg, var(--success) 0%, #81c784 100%);
+            color: white;
+        }
+        .step-label {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        .step-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .step-number {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 30px;
+            height: 30px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Arrow between steps */
+        .workflow-arrow {
+            display: none;
+        }
+
+        /* Agent Cards */
+        .agent-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            height: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-top: 5px solid var(--primary);
+        }
+        .agent-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+        .agent-card.human-card {
+            border-top-color: var(--secondary);
+        }
+        .agent-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+        }
+        .agent-icon.ai {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+        .agent-icon.human {
+            background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);
+            color: white;
+        }
+        .agent-card h4 {
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .agent-card .capabilities {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .agent-card .capabilities li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .agent-card .capabilities li:last-child {
+            border-bottom: none;
+        }
+        .agent-card .capabilities .check {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: 100%;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-3px);
+        }
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+        .feature-card h5 {
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+        }
+        .feature-card p {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* State Preservation Diagram */
+        .state-diagram {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .state-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .state-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .state-row.active {
+            background: #fff3e0;
+            border-left-color: var(--secondary);
+        }
+        .state-row.completed {
+            background: #e8f5e9;
+            border-left-color: var(--success);
+        }
+        .state-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .state-row.active .state-number {
+            background: var(--secondary);
+        }
+        .state-row.completed .state-number {
+            background: var(--success);
+        }
+        .state-content {
+            flex: 1;
+        }
+        .state-title {
+            font-weight: 600;
+            color: #333;
+        }
+        .state-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .state-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .state-badge.saved {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .state-badge.waiting {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        /* Benefits Section */
+        .benefit-item {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .benefit-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--success) 0%, #81c784 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .benefit-text h5 {
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+        .benefit-text p {
+            color: #666;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Architecture Diagram */
+        .arch-container {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .arch-layer {
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .arch-layer:last-child {
+            margin-bottom: 0;
+        }
+        .arch-layer.presentation {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 2px solid #90caf9;
+        }
+        .arch-layer.orchestration {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border: 2px solid #ffcc80;
+        }
+        .arch-layer.agents {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border: 2px solid #a5d6a7;
+        }
+        .arch-layer.storage {
+            background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+            border: 2px solid #f48fb1;
+        }
+        .arch-label {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: white;
+            padding: 0 0.5rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .arch-items {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .arch-item {
+            background: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Tech Stack */
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: white;
+            border-radius: 50px;
+            margin: 0.25rem;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .tech-badge img {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 3rem;
+            border-radius: 16px;
+            text-align: center;
+        }
+        .cta-section h3 {
+            margin-bottom: 1rem;
+        }
+        .cta-section .btn {
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 50px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .workflow::before { display: none; }
+            .workflow { flex-direction: column; align-items: center; }
+            .workflow-step { max-width: 100%; }
+            .section { padding: 2rem 0; }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>AI-Powered Claims Processing</h1>
+            <p class="subtitle">Human-in-the-Loop Orchestration with Azure AI Agents</p>
+            <div class="mt-4">
+                <span class="badge-tech">Azure Durable Functions</span>
+                <span class="badge-tech">Azure AI Foundry</span>
+                <span class="badge-tech">HITL Orchestration</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Workflow Section -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">End-to-End Workflow</h2>
+            <p class="section-subtitle">Intelligent automation with human oversight at critical decision points</p>
+
+            <div class="workflow-container">
+                <div class="workflow">
+                    <div class="workflow-step">
+                        <div class="step-icon input">
+                            <span class="step-number">1</span>
+                            &#128233;
+                        </div>
+                        <div class="step-label">Claim Received</div>
+                        <div class="step-desc">Email with PDF attachment arrives</div>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="step-icon agent">
+                            <span class="step-number">2</span>
+                            &#129302;
+                        </div>
+                        <div class="step-label">Classifier Agent</div>
+                        <div class="step-desc">AI extracts & classifies claim data</div>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="step-icon human">
+                            <span class="step-number">3</span>
+                            &#128100;
+                        </div>
+                        <div class="step-label">Human Review</div>
+                        <div class="step-desc">Manual damage estimate entry</div>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="step-icon agent">
+                            <span class="step-number">4</span>
+                            &#129302;
+                        </div>
+                        <div class="step-label">Adjudicator Agent</div>
+                        <div class="step-desc">AI evaluates & decides claim</div>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="step-icon output">
+                            <span class="step-number">5</span>
+                            &#10004;
+                        </div>
+                        <div class="step-label">Decision</div>
+                        <div class="step-desc">Approved, Denied, or Manual Review</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Agents Section -->
+    <section class="section" style="background: white;">
+        <div class="container">
+            <h2 class="section-title">Intelligent AI Agents</h2>
+            <p class="section-subtitle">Specialized agents working together with human expertise</p>
+
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="agent-card">
+                        <div class="agent-icon ai">&#129302;</div>
+                        <h4>Claim Classifier Agent</h4>
+                        <ul class="capabilities">
+                            <li><span class="check">&#10003;</span> Extracts data from emails</li>
+                            <li><span class="check">&#10003;</span> Processes PDF attachments</li>
+                            <li><span class="check">&#10003;</span> Classifies claim types (VSC, GAP, PPM, etc.)</li>
+                            <li><span class="check">&#10003;</span> Identifies component categories</li>
+                            <li><span class="check">&#10003;</span> Provides confidence scores</li>
+                            <li><span class="check">&#10003;</span> Flags missing information</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="agent-card human-card">
+                        <div class="agent-icon human">&#128100;</div>
+                        <h4>Human Reviewer</h4>
+                        <ul class="capabilities">
+                            <li><span class="check">&#10003;</span> Reviews AI extraction</li>
+                            <li><span class="check">&#10003;</span> Enters damage estimates</li>
+                            <li><span class="check">&#10003;</span> Validates claim data</li>
+                            <li><span class="check">&#10003;</span> Adds parts & labor costs</li>
+                            <li><span class="check">&#10003;</span> Provides expert judgment</li>
+                            <li><span class="check">&#10003;</span> Handles edge cases</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="agent-card">
+                        <div class="agent-icon ai">&#129302;</div>
+                        <h4>Claim Adjudicator Agent</h4>
+                        <ul class="capabilities">
+                            <li><span class="check">&#10003;</span> Evaluates coverage rules</li>
+                            <li><span class="check">&#10003;</span> Checks contract status</li>
+                            <li><span class="check">&#10003;</span> Validates mileage limits</li>
+                            <li><span class="check">&#10003;</span> Applies deductibles</li>
+                            <li><span class="check">&#10003;</span> Auto-approves eligible claims</li>
+                            <li><span class="check">&#10003;</span> Routes complex claims to review</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- State Preservation Section -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Durable State Preservation</h2>
+            <p class="section-subtitle">Workflow state is preserved across all stages - even during human review delays</p>
+
+            <div class="row">
+                <div class="col-lg-6 mb-4">
+                    <div class="state-diagram">
+                        <h5 class="mb-4" style="color: var(--primary);">Workflow State Timeline</h5>
+                        <div class="state-flow">
+                            <div class="state-row completed">
+                                <div class="state-number">1</div>
+                                <div class="state-content">
+                                    <div class="state-title">Claim Received</div>
+                                    <div class="state-desc">Email data captured and stored</div>
+                                </div>
+                                <span class="state-badge saved">State Saved</span>
+                            </div>
+                            <div class="state-row completed">
+                                <div class="state-number">2</div>
+                                <div class="state-content">
+                                    <div class="state-title">Classifier Complete</div>
+                                    <div class="state-desc">Extraction & classification stored</div>
+                                </div>
+                                <span class="state-badge saved">State Saved</span>
+                            </div>
+                            <div class="state-row active">
+                                <div class="state-number">3</div>
+                                <div class="state-content">
+                                    <div class="state-title">Awaiting Human Input</div>
+                                    <div class="state-desc">Workflow paused - can wait hours/days</div>
+                                </div>
+                                <span class="state-badge waiting">Waiting</span>
+                            </div>
+                            <div class="state-row">
+                                <div class="state-number">4</div>
+                                <div class="state-content">
+                                    <div class="state-title">Adjudication</div>
+                                    <div class="state-desc">Resumes with all previous context</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 mb-4">
+                    <div class="state-diagram h-100">
+                        <h5 class="mb-4" style="color: var(--primary);">Key Benefits</h5>
+
+                        <div class="benefit-item">
+                            <div class="benefit-icon">&#128274;</div>
+                            <div class="benefit-text">
+                                <h5>Guaranteed Consistency</h5>
+                                <p>State is persisted to durable storage - survives restarts, failures, and deployments</p>
+                            </div>
+                        </div>
+
+                        <div class="benefit-item">
+                            <div class="benefit-icon">&#9203;</div>
+                            <div class="benefit-text">
+                                <h5>Unlimited Wait Times</h5>
+                                <p>Human review can take minutes, hours, or days - workflow resumes exactly where it paused</p>
+                            </div>
+                        </div>
+
+                        <div class="benefit-item">
+                            <div class="benefit-icon">&#128260;</div>
+                            <div class="benefit-text">
+                                <h5>Complete Audit Trail</h5>
+                                <p>Every stage is timestamped - full traceability for compliance</p>
+                            </div>
+                        </div>
+
+                        <div class="benefit-item">
+                            <div class="benefit-icon">&#9889;</div>
+                            <div class="benefit-text">
+                                <h5>Automatic Retry</h5>
+                                <p>Transient failures are automatically retried without data loss</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="section" style="background: white;">
+        <div class="container">
+            <h2 class="section-title">System Architecture</h2>
+            <p class="section-subtitle">Built on Azure's enterprise-grade serverless platform</p>
+
+            <div class="arch-container">
+                <div class="arch-layer presentation">
+                    <span class="arch-label">PRESENTATION LAYER</span>
+                    <div class="arch-items">
+                        <div class="arch-item">&#128187; Claims Dashboard</div>
+                        <div class="arch-item">&#128221; Review Interface</div>
+                        <div class="arch-item">&#128202; Status Tracking</div>
+                    </div>
+                </div>
+
+                <div class="arch-layer orchestration">
+                    <span class="arch-label">ORCHESTRATION LAYER</span>
+                    <div class="arch-items">
+                        <div class="arch-item">&#9881; Azure Durable Functions</div>
+                        <div class="arch-item">&#128257; External Events (HITL)</div>
+                        <div class="arch-item">&#9203; Timers & Timeouts</div>
+                        <div class="arch-item">&#128260; State Management</div>
+                    </div>
+                </div>
+
+                <div class="arch-layer agents">
+                    <span class="arch-label">AI AGENTS LAYER</span>
+                    <div class="arch-items">
+                        <div class="arch-item">&#129302; Classifier Agent (Azure AI Foundry)</div>
+                        <div class="arch-item">&#129302; Adjudicator Agent (Azure AI Foundry)</div>
+                        <div class="arch-item">&#128196; Document Intelligence</div>
+                    </div>
+                </div>
+
+                <div class="arch-layer storage">
+                    <span class="arch-label">DATA LAYER</span>
+                    <div class="arch-items">
+                        <div class="arch-item">&#128451; Azure Table Storage</div>
+                        <div class="arch-item">&#128230; Azure Blob Storage</div>
+                        <div class="arch-item">&#128220; Durable Task Hub</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Key Features</h2>
+            <p class="section-subtitle">Enterprise-ready capabilities for production workloads</p>
+
+            <div class="row g-4">
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">&#129302;</div>
+                        <h5>Multi-Agent Orchestration</h5>
+                        <p>Seamlessly coordinate multiple AI agents with human reviewers in a single workflow</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">&#128100;</div>
+                        <h5>Human-in-the-Loop</h5>
+                        <p>Critical decisions involve human experts while AI handles routine processing</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">&#128196;</div>
+                        <h5>Document Processing</h5>
+                        <p>Automatically extract data from PDFs and emails using AI</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">&#9989;</div>
+                        <h5>Auto-Approval Rules</h5>
+                        <p>Claims under threshold are automatically approved, reducing processing time</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">&#128202;</div>
+                        <h5>Real-Time Dashboard</h5>
+                        <p>Monitor all claims with live status updates and workflow progress</p>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-sm-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">&#128274;</div>
+                        <h5>Enterprise Security</h5>
+                        <p>Built on Azure with managed identity, encryption, and compliance</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advantages Section -->
+    <section class="section" style="background: white;">
+        <div class="container">
+            <h2 class="section-title">Business Advantages</h2>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="benefit-item">
+                        <div class="benefit-icon" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">&#128200;</div>
+                        <div class="benefit-text">
+                            <h5>70% Faster Processing</h5>
+                            <p>AI agents handle routine extraction and classification, dramatically reducing manual effort</p>
+                        </div>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">&#128176;</div>
+                        <div class="benefit-text">
+                            <h5>Reduced Operational Costs</h5>
+                            <p>Serverless architecture means you only pay for actual processing time</p>
+                        </div>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">&#127919;</div>
+                        <div class="benefit-text">
+                            <h5>Improved Accuracy</h5>
+                            <p>AI extraction combined with human validation ensures high-quality data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="benefit-item">
+                        <div class="benefit-icon" style="background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);">&#128101;</div>
+                        <div class="benefit-text">
+                            <h5>Better Customer Experience</h5>
+                            <p>Faster claim decisions lead to higher customer satisfaction</p>
+                        </div>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon" style="background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);">&#128208;</div>
+                        <div class="benefit-text">
+                            <h5>Scalability</h5>
+                            <p>Handle 10 or 10,000 claims with the same infrastructure - auto-scales on demand</p>
+                        </div>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon" style="background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);">&#9878;</div>
+                        <div class="benefit-text">
+                            <h5>Compliance Ready</h5>
+                            <p>Full audit trail, timestamps, and human oversight for regulatory requirements</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section">
+        <div class="container">
+            <div class="cta-section">
+                <h3>See It In Action</h3>
+                <p class="mb-4">Experience the Claims Dashboard and submit a test claim</p>
+                <a href="/api/dashboard" class="btn btn-light btn-lg">Open Dashboard</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 text-muted">
+        <small>HITL Claims Processing System - Built with Azure Durable Functions & Azure AI Foundry</small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1048,9 +1048,9 @@
 
             if (runtimeStatus === 'Running') {
                 const stepMap = {
-                    'agent1_processing': 'Claim Classifier Agent',
+                    'agent1_processing': 'Classifier Agent Activated',
                     'awaiting_approval': 'Awaiting Manual Estimate',
-                    'agent2_processing': 'Claim Adjudicator Agent'
+                    'agent2_processing': 'Adjudication Agent Activated'
                 };
                 return stepMap[step] || step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             }

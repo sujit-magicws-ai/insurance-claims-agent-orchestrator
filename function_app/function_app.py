@@ -90,6 +90,41 @@ async def serve_dashboard(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
+@app.route(route="presentation", methods=["GET"])
+async def serve_presentation(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Serve the Stakeholder Presentation HTML page.
+
+    Returns:
+        200: HTML presentation page
+        404: Static file not found
+    """
+    try:
+        static_dir = Path(__file__).parent / "static"
+        html_path = static_dir / "presentation.html"
+
+        if not html_path.exists():
+            return func.HttpResponse(
+                "Presentation not found",
+                status_code=404
+            )
+
+        html_content = html_path.read_text(encoding="utf-8")
+
+        return func.HttpResponse(
+            body=html_content,
+            status_code=200,
+            mimetype="text/html"
+        )
+
+    except Exception as e:
+        logger.error(f"Error serving presentation: {str(e)}")
+        return func.HttpResponse(
+            f"Error loading presentation: {str(e)}",
+            status_code=500
+        )
+
+
 @app.route(route="review/{instance_id}", methods=["GET"])
 async def serve_review_ui(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -407,10 +442,10 @@ async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
             # Map internal step names to display names
             step = custom_status.get("step") or "unknown"
             display_status = {
-                "agent1_processing": "Classifier Processing",
-                "sending_notification": "Classifier Processing",
+                "agent1_processing": "Classifier Agent Activated",
+                "sending_notification": "Classifier Agent Activated",
                 "awaiting_approval": "Awaiting Manual Estimate",
-                "agent2_processing": "Adjudicator Processing",
+                "agent2_processing": "Adjudication Agent Activated",
                 "agent2_completed": "Completed",
                 "rejected": "Rejected",
                 "timeout": "Timed Out"
