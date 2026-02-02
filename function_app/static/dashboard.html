@@ -937,28 +937,18 @@
                     </div>
                     ` : '<div class="detail-section"><h6>Claim Classifier Agent</h6><p class="text-muted">Processing or not yet available...</p></div>'}
 
-                    <!-- Approval Decision -->
-                    ${approvalDecision.decision ? `
+                    <!-- Manual Claim Damage Estimate -->
+                    ${approvalDecision.reviewer ? `
                     <div class="detail-section">
-                        <h6>Manual Review Decision</h6>
+                        <h6>Manual Claim Damage Estimate</h6>
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="info-item">
-                                    <label>Decision</label>
-                                    <div class="value">
-                                        <span class="badge ${approvalDecision.decision === 'approved' ? 'bg-success' : 'bg-danger'}">
-                                            ${approvalDecision.decision.toUpperCase()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="info-item">
-                                    <label>Reviewer</label>
+                                    <label>Submitted By</label>
                                     <div class="value">${approvalDecision.reviewer || '-'}</div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="info-item">
                                     <label>Timestamp</label>
                                     <div class="value">${approvalDecision.timestamp ? new Date(approvalDecision.timestamp).toLocaleString() : '-'}</div>
@@ -1058,9 +1048,9 @@
 
             if (runtimeStatus === 'Running') {
                 const stepMap = {
-                    'agent1_processing': 'Classifier Processing',
+                    'agent1_processing': 'Claim Classifier Agent',
                     'awaiting_approval': 'Awaiting Manual Estimate',
-                    'agent2_processing': 'Adjudicator Processing'
+                    'agent2_processing': 'Claim Adjudicator Agent'
                 };
                 return stepMap[step] || step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             }

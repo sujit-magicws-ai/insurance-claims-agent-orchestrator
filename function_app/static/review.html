@@ -716,7 +716,7 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    showStatus('Estimate submitted successfully! The Claim Adjudicator Agent will now process the claim.', 'success');
+                    showStatus('Damage estimate submitted successfully! Automatically routing to Claim Adjudicator Agent for decision...', 'success');
                     // Disable form after submission
                     document.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = true);
                 } else {
