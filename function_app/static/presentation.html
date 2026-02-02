@@ -656,7 +656,7 @@
                             &#128233;
                         </div>
                         <div class="node-label">Message Extractor Module</div>
-                        <div class="node-desc">Gets content & attachment URLs as JSON from Email/Teams/Chatbot queue</div>
+                        <div class="node-desc">Gets content & attachment URLs as JSON from Email/Teams/Chatbot and puts in Service Bus Queue</div>
                     </div>
 
                     <div class="workflow-arrow">&#8595;</div>
@@ -1239,6 +1239,75 @@
                         <div class="arch-item">&#128451; Azure Table Storage</div>
                         <div class="arch-item">&#128230; Azure Blob Storage</div>
                         <div class="arch-item">&#128220; Durable Task Hub</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Features -->
+            <div class="mt-5">
+                <h4 class="text-center mb-4" style="color: var(--primary);">&#128274; Inherits Your Azure Security Posture</h4>
+                <p class="text-center text-muted mb-4">Azure AI Foundry Agents and Azure Durable Functions integrate seamlessly with your established Azure security controls</p>
+
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <div class="rules-container h-100">
+                            <div class="d-flex align-items-start mb-3">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">1</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">Microsoft Entra ID</h6>
+                                    <p class="small text-muted mb-0">Agents & Functions authenticate using your existing identity provider</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start mb-3">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">2</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">Managed Identity</h6>
+                                    <p class="small text-muted mb-0">Credential-free service-to-service communication within your tenant</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start mb-3">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">3</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">RBAC</h6>
+                                    <p class="small text-muted mb-0">Respects your existing role assignments and permission boundaries</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">4</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">Virtual Network / Private Endpoints</h6>
+                                    <p class="small text-muted mb-0">Deploys within your existing network isolation configuration</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="rules-container h-100">
+                            <div class="d-flex align-items-start mb-3">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--success) 0%, #81c784 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">5</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">Encryption (AES-256 / CMK)</h6>
+                                    <p class="small text-muted mb-0">Uses your established encryption policies for data at rest & transit</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start mb-3">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--success) 0%, #81c784 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">6</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">Azure Policy & Defender</h6>
+                                    <p class="small text-muted mb-0">Governed by your compliance policies and threat detection rules</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start">
+                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--success) 0%, #81c784 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px; flex-shrink: 0;">7</div>
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--primary);">Audit Logging & Monitoring</h6>
+                                    <p class="small text-muted mb-0">Activity flows into your existing Log Analytics and SIEM</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 p-2 bg-light rounded small text-center">
+                                <strong>&#128273; No separate security configuration needed</strong> - AI Foundry and Durable Functions automatically inherit your organization's Azure security baseline
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

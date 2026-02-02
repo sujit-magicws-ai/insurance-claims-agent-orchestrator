@@ -877,6 +877,8 @@
                 const output = data.output || {};
                 const agent1Output = output.agent1_output || customStatus.agent1_output || {};
                 const agent2Output = output.agent2_output || {};
+                const agent3Input = output.agent3_input || {};
+                const agent3Output = output.agent3_output || {};
                 const approvalDecision = output.approval_decision || {};
 
                 modalTitle.textContent = `Claim: ${claimId}`;
@@ -1012,6 +1014,53 @@
                     </div>
                     ` : ''}
 
+                    <!-- Agent 3 Output (Email Composer) -->
+                    ${agent3Output.email_subject ? `
+                    <div class="detail-section" style="border-left: 4px solid #4CAF50;">
+                        <h6 style="color: #4CAF50; border-bottom-color: #4CAF50;">Email Composer Agent</h6>
+
+                        <!-- Style Parameters Used -->
+                        ${agent3Input.config ? `
+                        <div class="mb-3 p-2 rounded" style="background: #e8f5e9;">
+                            <label class="form-label text-muted small mb-2"><strong>Style Parameters Used:</strong></label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge bg-secondary">Tone: ${agent3Input.config.tone || 'formal'}</span>
+                                <span class="badge bg-secondary">Length: ${agent3Input.config.length || 'standard'}</span>
+                                <span class="badge bg-secondary">Empathy: ${agent3Input.config.empathy || 'neutral'}</span>
+                                <span class="badge bg-secondary">CTA: ${agent3Input.config.call_to_action || 'none'}</span>
+                                <span class="badge bg-secondary">Persona: ${agent3Input.config.persona || 'Claims Department'}</span>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="info-item" style="border-left-color: #4CAF50;">
+                                    <label>Recipient</label>
+                                    <div class="value">${agent3Output.recipient_name || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item" style="border-left-color: #4CAF50;">
+                                    <label>Email</label>
+                                    <div class="value">${agent3Output.recipient_email || '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Subject</label>
+                            <p class="mb-0 fw-bold">${agent3Output.email_subject}</p>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label text-muted small">Email Body</label>
+                            <div class="p-3 bg-white border rounded" style="white-space: pre-wrap; font-size: 0.9rem; max-height: 300px; overflow-y: auto;">${agent3Output.email_body || ''}</div>
+                        </div>
+                        ${agent3Output.generated_at ? `
+                        <small class="text-muted">Generated: ${new Date(agent3Output.generated_at).toLocaleString()}</small>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
                     <!-- Timestamps -->
                     <div class="text-muted small">
                         <div class="row">
@@ -1050,7 +1099,8 @@
                 const stepMap = {
                     'agent1_processing': 'Classifier Agent Activated',
                     'awaiting_approval': 'Awaiting Manual Estimate',
-                    'agent2_processing': 'Adjudication Agent Activated'
+                    'agent2_processing': 'Adjudication Agent Activated',
+                    'agent3_processing': 'Email Composer Activated'
                 };
                 return stepMap[step] || step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             }
@@ -1082,6 +1132,7 @@
                 { id: 'agent1', label: 'Claim Classifier Agent', timeKey: 'classifier_completed' },
                 { id: 'awaiting', label: 'Awaiting Manual Estimate', timeKey: 'awaiting_started' },
                 { id: 'agent2', label: 'Claim Adjudicator Agent', timeKey: 'adjudicator_completed' },
+                { id: 'agent3', label: 'Email Composer Agent', timeKey: 'email_composer_completed' },
                 { id: 'complete', label: 'Completed', timeKey: 'completed' }
             ];
 
@@ -1091,6 +1142,7 @@
                 agent1: 'pending',
                 awaiting: 'pending',
                 agent2: 'pending',
+                agent3: 'pending',
                 complete: 'pending'
             };
 
@@ -1103,10 +1155,16 @@
                 stageStatus.agent1 = 'completed';
                 stageStatus.awaiting = 'completed';
                 stageStatus.agent2 = 'active';
-            } else if (step === 'agent2_completed' || step === 'rejected' || step === 'timeout') {
+            } else if (step === 'agent3_processing') {
                 stageStatus.agent1 = 'completed';
                 stageStatus.awaiting = 'completed';
                 stageStatus.agent2 = 'completed';
+                stageStatus.agent3 = 'active';
+            } else if (step === 'completed' || step === 'agent2_completed' || step === 'rejected' || step === 'timeout') {
+                stageStatus.agent1 = 'completed';
+                stageStatus.awaiting = 'completed';
+                stageStatus.agent2 = 'completed';
+                stageStatus.agent3 = 'completed';
                 stageStatus.complete = 'completed';
             }
 

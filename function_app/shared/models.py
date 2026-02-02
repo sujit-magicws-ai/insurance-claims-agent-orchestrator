@@ -162,6 +162,47 @@ class ApprovalDecision(BaseModel):
 # Agent2Input is a generic dict - created by external process
 # We just pass it through to Agent2
 
+
+# =============================================================================
+# Agent3 Models (Email Composer)
+# =============================================================================
+
+class EmailComposerConfig(BaseModel):
+    """Configuration for Email Composer Agent style settings."""
+    tone: Literal["formal", "casual", "urgent"] = Field("formal", description="Email tone")
+    length: Literal["brief", "standard", "detailed"] = Field("standard", description="Email length")
+    empathy: Literal["neutral", "warm", "highly_supportive"] = Field("warm", description="Empathy level")
+    call_to_action: Literal["none", "soft", "direct"] = Field("soft", description="Call to action style")
+    persona: str = Field("Claims Department", description="Name in email signature")
+    template: Optional[str] = Field(None, description="Predefined template/format name")
+
+
+class Agent3Input(BaseModel):
+    """Input for Agent3 (email-composer-agent).
+
+    Contains recipient details, content, and style settings for email composition.
+    """
+    claim_id: str = Field(..., description="Unique claim identifier")
+    recipient_name: str = Field(..., description="Recipient's name")
+    recipient_email: str = Field(..., description="Recipient's email address")
+    email_purpose: str = Field(..., description="Purpose of the email (e.g., Claim Approval Notification)")
+    outcome_summary: str = Field(..., description="Summary of the outcome to communicate")
+    additional_context: Optional[str] = Field(None, description="Additional context for the email")
+    config: EmailComposerConfig = Field(default_factory=EmailComposerConfig, description="Email style configuration")
+
+
+class Agent3Output(BaseModel):
+    """Output from Agent3 (email-composer-agent).
+
+    Contains the composed email ready to be sent.
+    """
+    claim_id: str = Field(..., description="Unique claim identifier")
+    email_subject: str = Field(..., description="Composed email subject line")
+    email_body: str = Field(..., description="Composed email body")
+    recipient_name: str = Field(..., description="Recipient's name")
+    recipient_email: str = Field(..., description="Recipient's email address")
+    generated_at: datetime = Field(default_factory=datetime.utcnow, description="When email was generated")
+
 class EvaluationSummary(BaseModel):
     """Summary of the evaluation performed by Agent2."""
     contract_status: str = Field(..., description="Contract status (Active, Expired, etc.)")
@@ -222,6 +263,7 @@ class OrchestrationResult(BaseModel):
     approval_decision: Optional[ApprovalDecision] = Field(None, description="Human reviewer decision")
     agent2_input: Optional[dict] = Field(None, description="Structured data sent to Agent2")
     agent2_output: Optional[Agent2Output] = Field(None, description="Adjudication result from Agent2")
+    agent3_output: Optional[Agent3Output] = Field(None, description="Email composition result from Agent3")
     error_message: Optional[str] = Field(None, description="Error message if status is 'error'")
     started_at: datetime = Field(default_factory=datetime.utcnow, description="When orchestration started")
     completed_at: Optional[datetime] = Field(None, description="When orchestration completed")

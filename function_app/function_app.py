@@ -16,6 +16,7 @@ from pathlib import Path
 from activities.agent1_activity import run_agent1_activity
 from activities.notify_activity import run_notify_activity
 from activities.agent2_activity import run_agent2_activity
+from activities.agent3_activity import run_agent3_activity
 from shared.models import ClaimRequest, Agent1Output, ApprovalDecision
 
 # Initialize the Durable Functions app
@@ -446,7 +447,9 @@ async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
                 "sending_notification": "Classifier Agent Activated",
                 "awaiting_approval": "Awaiting Manual Estimate",
                 "agent2_processing": "Adjudication Agent Activated",
+                "agent3_processing": "Email Composer Agent Activated",
                 "agent2_completed": "Completed",
+                "completed": "Completed",
                 "rejected": "Rejected",
                 "timeout": "Timed Out"
             }.get(step, step.replace("_", " ").title())
@@ -564,6 +567,90 @@ async def get_claim_status(req: func.HttpRequest, client) -> func.HttpResponse:
             status_code=500,
             mimetype="application/json"
         )
+
+
+# =============================================================================
+# Service Bus Trigger
+# =============================================================================
+
+@app.service_bus_queue_trigger(
+    arg_name="message",
+    queue_name="%SERVICE_BUS_QUEUE_NAME%",
+    connection="SERVICE_BUS_CONNECTION_STRING"
+)
+@app.durable_client_input(client_name="client")
+async def servicebus_claim_trigger(message: func.ServiceBusMessage, client) -> None:
+    """
+    Service Bus trigger to start a new claim orchestration from queue message.
+
+    Expected Message Format (JSON):
+        {
+            "claim_id": "CLM-2026-00199",
+            "email_content": "Subject: Claim Request\n\nDear Claims Team...",
+            "attachment_url": "https://storage.blob.core.windows.net/claims/form.pdf",
+            "sender_email": "claimant@email.com",
+            "metadata": {}  // optional
+        }
+
+    The message will be processed and the orchestration started.
+    If the orchestration already exists and is running, the message is logged and skipped.
+    """
+    try:
+        # Get message body
+        message_body = message.get_body().decode("utf-8")
+        logger.info(f"Service Bus message received: {message.message_id}")
+
+        # Parse JSON
+        try:
+            body = json.loads(message_body)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in Service Bus message: {str(e)}")
+            logger.error(f"Message body: {message_body[:500]}")
+            # Message will be dead-lettered after max delivery attempts
+            raise
+
+        # Validate required fields
+        required_fields = ["claim_id", "email_content", "attachment_url", "sender_email"]
+        missing_fields = [f for f in required_fields if not body.get(f)]
+        if missing_fields:
+            logger.error(f"Missing required fields in Service Bus message: {missing_fields}")
+            raise ValueError(f"Missing required fields: {missing_fields}")
+
+        # Validate with Pydantic model
+        try:
+            claim_request = ClaimRequest.model_validate(body)
+        except Exception as e:
+            logger.error(f"Validation error for Service Bus message: {str(e)}")
+            raise
+
+        # Use claim_id as instance_id for deterministic tracking
+        instance_id = f"claim-{claim_request.claim_id}"
+
+        # Check if orchestration already exists
+        existing = await client.get_status(instance_id)
+        if existing and existing.runtime_status.name in ["Running", "Pending"]:
+            logger.warning(
+                f"Orchestration {instance_id} already exists with status {existing.runtime_status.name}. "
+                f"Skipping duplicate message."
+            )
+            return  # Message acknowledged, not reprocessed
+
+        # Start the orchestration
+        await client.start_new(
+            orchestration_function_name="claim_orchestrator",
+            instance_id=instance_id,
+            client_input=claim_request.model_dump(mode="json")
+        )
+
+        logger.info(
+            f"Started orchestration {instance_id} for claim {claim_request.claim_id} "
+            f"(triggered by Service Bus message {message.message_id})"
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing Service Bus message: {str(e)}")
+        # Re-raise to trigger retry/dead-letter
+        raise
 
 
 # =============================================================================
@@ -694,6 +781,8 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     final_status = None
     agent2_input = None
     agent2_output = None
+    agent3_input = None
+    agent3_output = None
 
     if winner == timeout_task:
         # Timeout occurred
@@ -772,13 +861,48 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
                 logger.info(f"[{instance_id}] Agent2 completed - Decision: {agent2_output.get('decision')}")
 
             stage_timestamps["adjudicator_completed"] = context.current_utc_datetime.isoformat()
+
+            # =========================================================================
+            # Step 6: Call Agent3 for Email Composition
+            # =========================================================================
+            stage_timestamps["email_composer_started"] = context.current_utc_datetime.isoformat()
+            context.set_custom_status({
+                "step": "agent3_processing",
+                "claim_id": claim_id,
+                "decision": agent2_output.get("decision"),
+                "message": "Composing notification email...",
+                "stage_timestamps": stage_timestamps
+            })
+
+            # Prepare Agent3 input
+            agent3_activity_input = {
+                "claim_id": claim_id,
+                "agent1_output": agent1_result,
+                "agent2_output": agent2_output,
+                "_instance_id": instance_id
+            }
+
+            # Call Agent3 Activity
+            agent3_activity_result = yield context.call_activity("agent3_activity", agent3_activity_input)
+
+            agent3_input = agent3_activity_result.get("agent3_input")
+            agent3_output = agent3_activity_result.get("agent3_output")
+
+            if not context.is_replaying:
+                if agent3_output:
+                    logger.info(f"[{instance_id}] Agent3 completed - Subject: {agent3_output.get('email_subject')}")
+                else:
+                    logger.warning(f"[{instance_id}] Agent3 failed - {agent3_activity_result.get('error')}")
+
+            stage_timestamps["email_composer_completed"] = context.current_utc_datetime.isoformat()
             stage_timestamps["completed"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
-                "step": "agent2_completed",
+                "step": "completed",
                 "claim_id": claim_id,
                 "decision": agent2_output.get("decision"),
                 "approved_amount": agent2_output.get("approved_amount"),
-                "message": "Adjudication complete",
+                "email_sent": agent3_output is not None,
+                "message": "Processing complete",
                 "stage_timestamps": stage_timestamps
             })
 
@@ -794,6 +918,8 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
         "approval_decision": approval_decision,
         "agent2_input": agent2_input,
         "agent2_output": agent2_output,
+        "agent3_input": agent3_input,
+        "agent3_output": agent3_output,
         "stage_timestamps": stage_timestamps,
         "error_message": None,
         "started_at": started_at,
@@ -856,3 +982,20 @@ def agent2_activity(activityInput: dict) -> dict:
         Dictionary with Agent2 output data (adjudication decision)
     """
     return run_agent2_activity(activityInput)
+
+
+@app.activity_trigger(input_name="activityInput")
+def agent3_activity(activityInput: dict) -> dict:
+    """
+    Activity function wrapper for Agent3 (Email Composer).
+
+    This wrapper is registered with Durable Functions and delegates
+    to the actual implementation in activities/agent3_activity.py.
+
+    Args:
+        activityInput: Dictionary with Agent3 input data
+
+    Returns:
+        Dictionary with Agent3 output data (composed email)
+    """
+    return run_agent3_activity(activityInput)

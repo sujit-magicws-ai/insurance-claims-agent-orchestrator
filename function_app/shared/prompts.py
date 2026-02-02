@@ -226,6 +226,63 @@ Respond ONLY with the JSON, no additional text."""
 
 
 # =============================================================================
+# Agent3 Prompt (Email Composer)
+# =============================================================================
+
+AGENT3_SYSTEM_PROMPT = """You are an email composition assistant for a vehicle service contract (VSC) company.
+Your job is to compose professional, clear, and empathetic emails to customers regarding their claims."""
+
+AGENT3_USER_PROMPT_TEMPLATE = """Compose an email with the following details:
+
+**RECIPIENT:**
+- Name: {recipient_name}
+- Email: {recipient_email}
+
+**EMAIL PURPOSE:**
+{email_purpose}
+
+**OUTCOME SUMMARY:**
+{outcome_summary}
+
+**SENDER/PERSONA:**
+{persona}
+
+**ADDITIONAL CONTEXT:**
+{additional_context}
+
+**STYLE SETTINGS:**
+- Tone: {tone}
+- Length: {length}
+- Empathy: {empathy}
+- Call to Action: {call_to_action}
+- Template: {template}
+
+---
+
+**Instructions:**
+1. Compose a professional email based on the purpose and outcome summary
+2. Use the specified tone (formal/casual/urgent)
+3. Adjust length based on setting (brief: 2-3 paragraphs, standard: 4-5 paragraphs, detailed: 6+ paragraphs)
+4. Apply the empathy level appropriately
+5. Include call-to-action based on setting (none: no CTA, soft: suggest next steps, direct: clear action required)
+6. Sign the email with the persona name
+7. Include claim reference number if available in the context
+
+---
+
+Please provide your response as a JSON with the following structure:
+{{
+    "claim_id": "{claim_id}",
+    "email_subject": "Clear, concise subject line",
+    "email_body": "The complete email body with proper formatting and line breaks",
+    "recipient_name": "{recipient_name}",
+    "recipient_email": "{recipient_email}"
+}}
+
+Respond ONLY with the JSON, no additional text."""
+
+
+# =============================================================================
 # Helper Functions
 # =============================================================================
 
@@ -270,4 +327,53 @@ def build_agent2_prompt(claim_id: str, claim_data_json: str) -> str:
     return AGENT2_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         claim_data_json=claim_data_json
+    )
+
+
+def build_agent3_prompt(
+    claim_id: str,
+    recipient_name: str,
+    recipient_email: str,
+    email_purpose: str,
+    outcome_summary: str,
+    persona: str = "Claims Department",
+    additional_context: str = "",
+    tone: str = "formal",
+    length: str = "standard",
+    empathy: str = "warm",
+    call_to_action: str = "soft",
+    template: str = "default"
+) -> str:
+    """Build the complete prompt for Agent3 (Email Composer).
+
+    Args:
+        claim_id: Unique claim identifier
+        recipient_name: Recipient's name
+        recipient_email: Recipient's email address
+        email_purpose: Purpose of the email
+        outcome_summary: Summary of the outcome to communicate
+        persona: Name in email signature
+        additional_context: Additional context for the email
+        tone: Email tone (formal/casual/urgent)
+        length: Email length (brief/standard/detailed)
+        empathy: Empathy level (neutral/warm/highly_supportive)
+        call_to_action: CTA style (none/soft/direct)
+        template: Predefined template name
+
+    Returns:
+        Formatted prompt string for Agent3
+    """
+    return AGENT3_USER_PROMPT_TEMPLATE.format(
+        claim_id=claim_id,
+        recipient_name=recipient_name,
+        recipient_email=recipient_email,
+        email_purpose=email_purpose,
+        outcome_summary=outcome_summary,
+        persona=persona,
+        additional_context=additional_context or "None provided",
+        tone=tone,
+        length=length,
+        empathy=empathy,
+        call_to_action=call_to_action,
+        template=template or "default"
     )

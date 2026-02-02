@@ -2,7 +2,7 @@
 
 > **Project:** Human-in-the-Loop Orchestration with Azure AI Foundry Agents
 > **Created:** 2026-02-01
-> **Status:** 🔄 Phase 8 Planned (Email Composer Integration)
+> **Status:** ✅ Phase 8 Complete | ⬜ Phase 9 Planned (Email Sending Integration)
 > **Repository:** https://github.com/sujit-magicws-ai/insurance-claims-agent-orchestrator
 
 ---
@@ -18,11 +18,12 @@
 | 5 | Real Agent2 Integration & Full Flow | ✅ Completed | 2026-02-02 | 2026-02-02 |
 | 6 | Review UI & Notifications | ✅ Completed | 2026-02-02 | 2026-02-02 |
 | 7 | Claims Dashboard & Enhanced UI | ✅ Completed | 2026-02-02 | 2026-02-02 |
-| 8 | Email Composer Agent Integration | ⬜ Not Started | - | - |
+| 8 | Email Composer Agent Integration | ✅ Completed | 2026-02-02 | 2026-02-02 |
+| 9 | Email Sending Integration | ⬜ Not Started | - | - |
 
 **Legend:** ⬜ Not Started | 🔄 In Progress | ✅ Completed | ⏸️ Blocked
 
-> **Note:** Original plan consolidated to 7 phases. Real agent integration moved earlier (Phase 3) since agents were already deployed and tested. Phase 7 added for stakeholder demo UI. Phase 8 added for Email Composer Agent integration (post-approval notifications).
+> **Note:** Original plan consolidated to 7 phases. Real agent integration moved earlier (Phase 3) since agents were already deployed and tested. Phase 7 added for stakeholder demo UI. Phase 8 added for Email Composer Agent integration (post-approval notifications). Phase 9 planned for sending composed emails to specific addresses for review.
 
 ---
 
@@ -718,11 +719,11 @@ When a claim is AUTO-APPROVED by the Adjudicator Agent, the system should automa
 **Objective:** Create the Email Composer agent invocation infrastructure.
 
 **Deliverables:**
-- [ ] Update `shared/agent_client.py` with `invoke_email_composer()` function
-- [ ] Create `activities/agent3_activity.py` for Email Composer activity
-- [ ] Add `Agent3Input` and `Agent3Output` models to `shared/models.py`
-- [ ] Add Email Composer prompt template to `shared/prompts.py`
-- [ ] Add environment variables for Email Composer agent configuration
+- [x] Update `shared/agent_client.py` with `invoke_email_composer()` function
+- [x] Create `activities/agent3_activity.py` for Email Composer activity
+- [x] Add `Agent3Input` and `Agent3Output` models to `shared/models.py`
+- [x] Add Email Composer prompt template to `shared/prompts.py`
+- [x] Add environment variables for Email Composer agent configuration
 
 **Files to Create/Modify:**
 
@@ -766,14 +767,11 @@ class Agent3Output(BaseModel):
 
 **Testing Phase 8A:**
 
-1. [ ] Unit test `invoke_email_composer()` with mock mode
-2. [ ] Unit test Agent3 activity function with mock data
-3. [ ] Verify models serialize/deserialize correctly
-4. [ ] Test with real Email Composer Agent (standalone call):
-   ```bash
-   python tests/test_email_composer_activity.py
-   ```
-5. [ ] Expected: Returns valid JSON with email_subject and email_body
+1. [x] Unit test `invoke_email_composer()` with mock mode
+2. [x] Unit test Agent3 activity function with mock data
+3. [x] Verify models serialize/deserialize correctly
+4. [x] Test with real Email Composer Agent (standalone call)
+5. [x] Expected: Returns valid JSON with email_subject and email_body
 
 ---
 
@@ -782,12 +780,12 @@ class Agent3Output(BaseModel):
 **Objective:** Integrate Email Composer into the orchestration flow after AUTO-APPROVED decision.
 
 **Deliverables:**
-- [ ] Update orchestrator to check Agent2 decision
-- [ ] Call Agent3 activity only when `decision == "APPROVED"` and `decision_type == "AUTO"`
-- [ ] Build Agent3 input from Agent1 output + Agent2 output
-- [ ] Add `email_output` to `OrchestrationResult` model
-- [ ] Update custom status: `agent3_processing` → `email_composed`
-- [ ] Handle Agent3 errors gracefully (claim still approved, email failed)
+- [x] Update orchestrator to check Agent2 decision
+- [x] Call Agent3 activity for all decision types (APPROVED, DENIED, MANUAL_REVIEW, REQUEST_DOCUMENTS)
+- [x] Build Agent3 input from Agent1 output + Agent2 output
+- [x] Add `agent3_output` to `OrchestrationResult` model
+- [x] Update custom status: `agent3_processing` → `Email Composer Agent Activated`
+- [x] Handle Agent3 errors gracefully (claim still approved, email failed)
 
 **Orchestrator Logic:**
 
@@ -820,14 +818,14 @@ class OrchestrationResult(BaseModel):
 
 **Testing Phase 8B:**
 
-1. [ ] Start orchestration with test claim
-2. [ ] Submit manual estimate with low amount (triggers AUTO-APPROVE)
-3. [ ] Verify orchestration calls Agent3 after AUTO-APPROVED
-4. [ ] Verify custom status shows `agent3_processing` → `email_composed`
-5. [ ] Check status endpoint returns `agent3_output` with email content
-6. [ ] Test error handling: What happens if Email Composer fails?
-   - [ ] Claim should still be marked as approved
-   - [ ] `agent3_output` should contain error info
+1. [x] Start orchestration with test claim
+2. [x] Submit manual estimate
+3. [x] Verify orchestration calls Agent3 after Agent2 completes
+4. [x] Verify custom status shows `agent3_processing` (Email Composer Agent Activated)
+5. [x] Check status endpoint returns `agent3_output` with email content
+6. [x] Test error handling: What happens if Email Composer fails?
+   - [x] Claim should still be marked as approved
+   - [x] `agent3_output` should contain error info
 
 **Test Commands:**
 ```bash
@@ -848,11 +846,11 @@ curl "http://localhost:7071/api/claims/status/{instance_id}"
 **Objective:** Display email composition results in the Claims Dashboard.
 
 **Deliverables:**
-- [ ] Update Claims Dashboard to show "Email Sent" status indicator
-- [ ] Add Email Preview section in claim detail modal
-- [ ] Update workflow timeline to include Email Composer step
-- [ ] Add Email Composer status to claims table (icon/badge)
-- [ ] Show email subject and preview in detail view
+- [x] Update Claims Dashboard to show "Email Composed" status indicator
+- [x] Add Email Preview section in claim detail modal
+- [x] Update workflow timeline to include Email Composer step
+- [x] Add Email Composer Agent section with style parameters display
+- [x] Show email subject, body preview, and style parameters (tone, length, empathy, CTA, persona)
 
 **Dashboard Changes (dashboard.html):**
 
@@ -883,13 +881,13 @@ curl "http://localhost:7071/api/claims/status/{instance_id}"
 
 **Testing Phase 8C:**
 
-1. [ ] Navigate to Dashboard: `http://localhost:7071/api/dashboard`
-2. [ ] Find an AUTO-APPROVED claim with email
-3. [ ] Verify ✉️ icon appears in claims table
-4. [ ] Click "View Details" on the claim
-5. [ ] Verify "Notification Email" section displays
-6. [ ] Verify email subject and body preview are correct
-7. [ ] Verify workflow timeline shows "Email Composed" step with timestamp
+1. [x] Navigate to Dashboard: `http://localhost:7071/api/dashboard`
+2. [x] Find a completed claim with email
+3. [x] Click "View Details" on the claim
+4. [x] Verify "Email Composer Agent" section displays
+5. [x] Verify email subject and body preview are correct
+6. [x] Verify style parameters (tone, length, empathy, CTA, persona) display correctly
+7. [x] Verify workflow timeline shows "Email Composer" step with timestamp
 
 ---
 
@@ -899,48 +897,41 @@ curl "http://localhost:7071/api/claims/status/{instance_id}"
 
 **Test Scenarios:**
 
-**Scenario 8D.1: Happy Path - AUTO-APPROVED with Email**
-1. [ ] Submit new claim via Dashboard
-2. [ ] Wait for Classifier Agent to complete
-3. [ ] Submit Manual Estimate with:
-   - Total estimate under $1,500 (AUTO-APPROVE threshold)
-   - All documents checked (damage_photos, claim_form)
-4. [ ] Wait for Adjudicator Agent
-5. [ ] **Expected:** AUTO-APPROVED decision
-6. [ ] Wait for Email Composer Agent
-7. [ ] **Expected:** `agent3_output` with email_subject and email_body
-8. [ ] View in Dashboard - verify email preview
+**Scenario 8D.1: Happy Path - APPROVED with Email**
+1. [x] Submit new claim via Dashboard
+2. [x] Wait for Classifier Agent to complete
+3. [x] Submit Manual Estimate
+4. [x] Wait for Adjudicator Agent
+5. [x] **Expected:** Decision returned (APPROVED/DENIED/MANUAL_REVIEW)
+6. [x] Wait for Email Composer Agent
+7. [x] **Expected:** `agent3_output` with email_subject and email_body
+8. [x] View in Dashboard - verify email preview with style parameters
 
-**Scenario 8D.2: MANUAL_REVIEW - No Email**
-1. [ ] Submit claim with high estimate ($5,000+)
-2. [ ] Complete workflow
-3. [ ] **Expected:** MANUAL_REVIEW decision
-4. [ ] **Expected:** `agent3_output` is null (Email Composer not called)
+**Scenario 8D.2: All Decision Types Generate Email**
+1. [x] Email Composer generates appropriate emails for all decision types:
+   - APPROVED: Claim Approval Notification (warm tone)
+   - DENIED: Claim Decision Notification (highly_supportive tone)
+   - MANUAL_REVIEW: Claim Status Update (warm tone)
+   - REQUEST_DOCUMENTS: Additional Information Required (neutral tone)
 
-**Scenario 8D.3: DENIED - No Email**
-1. [ ] Submit claim that triggers denial (e.g., expired contract)
-2. [ ] Complete workflow
-3. [ ] **Expected:** DENIED decision
-4. [ ] **Expected:** `agent3_output` is null
-
-**Scenario 8D.4: Email Composer Failure**
-1. [ ] Temporarily misconfigure Email Composer agent
-2. [ ] Submit claim that would be AUTO-APPROVED
-3. [ ] **Expected:** Claim still AUTO-APPROVED
-4. [ ] **Expected:** `agent3_output` contains error info
-5. [ ] **Expected:** Orchestration completes successfully
+**Scenario 8D.3: Email Composer Failure**
+1. [x] Tested with misconfigured Email Composer agent
+2. [x] **Result:** Claim still processes successfully
+3. [x] **Result:** `agent3_output` contains error info
+4. [x] **Result:** Orchestration completes successfully
 
 **Validation Checklist:**
 
-| Check | Expected |
-|-------|----------|
-| Email only sent for AUTO-APPROVED | ✓ |
-| Email recipient matches claimant | ✓ |
-| Email contains correct claim ID | ✓ |
-| Email contains approved amount | ✓ |
-| Dashboard shows email status | ✓ |
-| Timeline shows all steps | ✓ |
-| Error handling works | ✓ |
+| Check | Expected | Status |
+|-------|----------|--------|
+| Email generated for all decision types | ✓ | ✅ Verified |
+| Email recipient matches claimant | ✓ | ✅ Verified |
+| Email contains correct claim ID | ✓ | ✅ Verified |
+| Email content matches decision type | ✓ | ✅ Verified |
+| Dashboard shows email preview | ✓ | ✅ Verified |
+| Style parameters displayed | ✓ | ✅ Verified |
+| Timeline shows Email Composer step | ✓ | ✅ Verified |
+| Error handling works | ✓ | ✅ Verified |
 
 ---
 
@@ -1007,12 +998,113 @@ Phase 8A ──→ Phase 8B ──→ Phase 8C ──→ Phase 8D
 ### Success Criteria
 
 Phase 8 is complete when:
-- [ ] AUTO-APPROVED claims trigger Email Composer Agent
-- [ ] Email contains correct claim details and approved amount
-- [ ] Dashboard displays email preview for sent emails
-- [ ] DENIED and MANUAL_REVIEW claims do not trigger email
-- [ ] Email Composer failures don't break the approval workflow
-- [ ] All test scenarios pass
+- [x] All decision types trigger Email Composer Agent with appropriate email content
+- [x] Email contains correct claim details and decision-specific content
+- [x] Dashboard displays email preview with style parameters
+- [x] Email tone/empathy adjusts based on decision type (warm for approved, supportive for denied)
+- [x] Email Composer failures don't break the claim workflow
+- [x] All test scenarios pass
+
+**Phase 8 Status: ✅ COMPLETED (2026-02-02)**
+
+---
+
+## Phase 9: Email Sending Integration (Planned)
+
+### Objective
+Enable sending the composed email to a specific email address for review before actual delivery to the claimant.
+
+### Business Context
+After the Email Composer Agent generates a notification email:
+1. Send the composed email to a designated review email address
+2. Allow human reviewers to verify email content before sending to claimant
+3. Optionally allow direct sending to claimant after review approval
+
+### Workflow Integration
+```
+[Email Composer Agent] ← (Phase 8 - completed)
+    ↓
+[Email Preview Generated]
+    ↓
+┌────────────────────────────────────────┐
+│         Email Review Mode               │
+├─────────────────┬──────────────────────┤
+│ Send to Review  │ Direct Send (future) │
+│ Email Address   │ to Claimant          │
+└─────────────────┴──────────────────────┘
+      ↓
+[Review Email Received]
+      ↓
+[Human Reviews Email Content]
+      ↓
+[Approve / Edit / Reject]
+```
+
+### Deliverables
+
+**Phase 9A: Email Sending Infrastructure**
+- [ ] Add email sending capability (Azure Communication Services / SMTP)
+- [ ] Create `activities/send_email_activity.py`
+- [ ] Add `REVIEW_EMAIL_ADDRESS` environment variable
+- [ ] Add `EMAIL_PROVIDER` configuration (Azure Communication Services / SMTP)
+
+**Phase 9B: Orchestrator Integration**
+- [ ] Update orchestrator to call send_email activity after Agent3
+- [ ] Add `email_sent` status to orchestration output
+- [ ] Add email delivery tracking (sent_at, delivery_status)
+- [ ] Handle email sending failures gracefully
+
+**Phase 9C: Dashboard Updates**
+- [ ] Add "Send for Review" button in claim detail modal
+- [ ] Show email sent status indicator
+- [ ] Add email delivery status tracking
+- [ ] Show reviewer feedback (if implemented)
+
+**Phase 9D: Review Workflow (Optional Enhancement)**
+- [ ] Create email review approval endpoint
+- [ ] Add "Approve & Send to Claimant" workflow
+- [ ] Add email edit capability before final send
+- [ ] Track email review audit trail
+
+### Environment Variables for Phase 9
+
+```json
+{
+  "Values": {
+    "REVIEW_EMAIL_ADDRESS": "claims-review@company.com",
+    "EMAIL_PROVIDER": "azure_communication_services",
+    "AZURE_COMMUNICATION_CONNECTION_STRING": "endpoint=...",
+    "SMTP_HOST": "smtp.example.com",
+    "SMTP_PORT": "587",
+    "SMTP_USERNAME": "...",
+    "SMTP_PASSWORD": "...",
+    "EMAIL_FROM_ADDRESS": "noreply@company.com",
+    "EMAIL_FROM_NAME": "Claims Department"
+  }
+}
+```
+
+### API Endpoints (Proposed)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/claims/{id}/send-review-email` | POST | Send composed email to review address |
+| `/api/claims/{id}/send-claimant-email` | POST | Send email directly to claimant |
+| `/api/claims/{id}/email-status` | GET | Get email delivery status |
+
+### Success Criteria
+
+Phase 9 is complete when:
+- [ ] Composed emails can be sent to a designated review email address
+- [ ] Email delivery status is tracked and displayed in dashboard
+- [ ] Email sending failures don't break the claim workflow
+- [ ] Optional: Review workflow allows approval before claimant delivery
+
+### Notes
+- This phase will be implemented in a future session
+- Consider Azure Communication Services for production email sending
+- SMTP fallback for development/testing environments
+- Email templates may need adjustment for actual delivery
 
 ---
 
@@ -1089,8 +1181,9 @@ AGENT_MOCK_MODE=false  # Set to true to use mock responses
 ## Dependencies Between Phases
 
 ```
-Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 ──→ Phase 6 ──→ Phase 7 ──→ Phase 8
-(Setup)    (Models)   (Agent1)    (HITL)     (Agent2)    (UI)      (Dashboard) (Email)
+Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 ──→ Phase 6 ──→ Phase 7 ──→ Phase 8 ──→ Phase 9
+(Setup)    (Models)   (Agent1)    (HITL)     (Agent2)    (UI)      (Dashboard) (Email     (Email
+                                                                               Composer)  Sending)
 ```
 
 - **Phase 1-2**: Project setup, no Azure dependency (can use mock mode)
@@ -1099,7 +1192,8 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 - **Phase 5**: Adds real Agent2 integration
 - **Phase 6**: Adds review UI (can be developed in parallel with Phase 5)
 - **Phase 7**: Adds Claims Dashboard for stakeholder demos (depends on Phase 6)
-- **Phase 8**: Adds Email Composer Agent for post-approval notifications (depends on Phase 7)
+- **Phase 8**: Adds Email Composer Agent for post-decision notifications (depends on Phase 7) ✅
+- **Phase 9**: Adds email sending to review address (depends on Phase 8) ⬜
 
 ---
 
@@ -1180,4 +1274,12 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 2026-02-02 | **Phase 7 completed** - Claims Dashboard & Enhanced UI | - |
 | 2026-02-02 | Phase 8 planned - Email Composer Agent Integration | Claude |
 | 2026-02-02 | Added 4 sub-phases: 8A (Agent Client), 8B (Orchestrator), 8C (Dashboard), 8D (E2E Testing) | Claude |
+| 2026-02-02 | **Phase 8A completed** - Agent3Input/Output models, invoke_email_composer(), agent3_activity | Claude |
+| 2026-02-02 | **Phase 8B completed** - Orchestrator integration, Agent3 called after Agent2 for all decisions | Claude |
+| 2026-02-02 | Integrated real EmailComposerAgent from Azure AI Foundry (langgraph project) | Claude |
+| 2026-02-02 | **Phase 8C completed** - Dashboard shows email preview with style parameters | Claude |
+| 2026-02-02 | Added style parameters display: tone, length, empathy, call_to_action, persona | Claude |
+| 2026-02-02 | Updated display status: "agent3_processing" → "Email Composer Agent Activated" | Claude |
+| 2026-02-02 | **Phase 8 COMPLETED** - Full Email Composer Agent integration working | Claude |
+| 2026-02-02 | Phase 9 planned - Email Sending Integration (send to review email address) | Claude |
 

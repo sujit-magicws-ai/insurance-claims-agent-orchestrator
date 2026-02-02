@@ -14,8 +14,8 @@ from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlparse, quote, urlunparse
 
-from .models import Agent1Input, Agent1Output, Agent2Output
-from .prompts import build_agent1_prompt, build_agent2_prompt
+from .models import Agent1Input, Agent1Output, Agent2Output, Agent3Input, Agent3Output
+from .prompts import build_agent1_prompt, build_agent2_prompt, build_agent3_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +230,37 @@ def _get_mock_agent2_response(claim_id: str, claim_data: dict) -> dict:
     }
 
 
+def _get_mock_agent3_response(input_data: Agent3Input) -> dict:
+    """Generate a mock Agent3 (Email Composer) response for testing.
+
+    Args:
+        input_data: The Agent3 input data
+
+    Returns:
+        Mock response dictionary matching Agent3Output schema
+    """
+    return {
+        "claim_id": input_data.claim_id,
+        "email_subject": f"Your Claim {input_data.claim_id} - {input_data.email_purpose}",
+        "email_body": f"""Dear {input_data.recipient_name},
+
+[MOCK EMAIL]
+
+{input_data.outcome_summary}
+
+If you have any questions regarding your claim, please don't hesitate to contact our claims department.
+
+Best regards,
+{input_data.config.persona}
+
+---
+Claim Reference: {input_data.claim_id}
+This is an automated notification.""",
+        "recipient_name": input_data.recipient_name,
+        "recipient_email": input_data.recipient_email
+    }
+
+
 # =============================================================================
 # Agent Invocation Functions
 # =============================================================================
@@ -241,7 +272,7 @@ def is_mock_mode(agent_num: int = 1) -> bool:
     or when the agent's project endpoint is not properly configured.
 
     Args:
-        agent_num: Which agent to check (1 or 2)
+        agent_num: Which agent to check (1, 2, or 3)
 
     Returns:
         True if mock mode should be used
@@ -254,6 +285,12 @@ def is_mock_mode(agent_num: int = 1) -> bool:
     # Check agent-specific endpoint
     endpoint_var = f"AGENT{agent_num}_PROJECT_ENDPOINT"
     endpoint = os.getenv(endpoint_var, "")
+
+    # For Agent3, fall back to Agent1 endpoint if not specifically configured
+    if agent_num == 3 and not endpoint:
+        endpoint = os.getenv("AGENT1_PROJECT_ENDPOINT", "")
+        if endpoint and "your-project" not in endpoint:
+            return False  # Use Agent1's endpoint for Agent3
 
     # Use mock mode if endpoint is not configured or is placeholder
     if not endpoint or "your-project" in endpoint or f"agent{agent_num}-project" in endpoint:
@@ -663,5 +700,79 @@ def invoke_agent2(
     # Validate and return as typed model
     output = Agent2Output.model_validate(response_dict)
     logger.info(f"{log_prefix}Agent2 decision: {output.decision} - Amount: ${output.approved_amount}")
+
+    return output
+
+
+def invoke_email_composer(
+    input_data: Agent3Input,
+    instance_id: Optional[str] = None,
+    max_retries: int = 2
+) -> Agent3Output:
+    """Invoke Agent3 (email-composer-agent) for email composition.
+
+    Args:
+        input_data: The input data for email composition
+        instance_id: Optional orchestration instance ID for logging
+        max_retries: Maximum number of retries on failure
+
+    Returns:
+        Agent3Output with composed email
+
+    Raises:
+        Exception: If agent invocation or response parsing fails after all retries
+    """
+    log_prefix = f"[{instance_id}] " if instance_id else ""
+    logger.info(f"{log_prefix}Invoking Email Composer for claim {input_data.claim_id}")
+
+    if is_mock_mode(agent_num=3):
+        logger.info(f"{log_prefix}Using mock mode for Agent3 (Email Composer)")
+        response_dict = _get_mock_agent3_response(input_data)
+    else:
+        # Build the prompt
+        prompt = build_agent3_prompt(
+            claim_id=input_data.claim_id,
+            recipient_name=input_data.recipient_name,
+            recipient_email=input_data.recipient_email,
+            email_purpose=input_data.email_purpose,
+            outcome_summary=input_data.outcome_summary,
+            persona=input_data.config.persona,
+            additional_context=input_data.additional_context or "",
+            tone=input_data.config.tone,
+            length=input_data.config.length,
+            empathy=input_data.config.empathy,
+            call_to_action=input_data.config.call_to_action,
+            template=input_data.config.template or "default"
+        )
+
+        agent_name = os.getenv("AGENT3_NAME", "EmailComposerAgent")
+        project_endpoint = os.getenv("AGENT3_PROJECT_ENDPOINT", os.getenv("AGENT1_PROJECT_ENDPOINT"))
+
+        last_error = None
+        for attempt in range(max_retries + 1):
+            try:
+                # Invoke the agent
+                response_text = invoke_foundry_agent(agent_name, prompt, project_endpoint)
+
+                # Parse the response with retry logic
+                response_dict = parse_agent_response(response_text, agent_name)
+                break  # Success, exit retry loop
+            except (json.JSONDecodeError, Exception) as e:
+                last_error = e
+                if attempt < max_retries:
+                    logger.warning(f"{log_prefix}Agent3 attempt {attempt + 1} failed: {e}. Retrying...")
+                    import time
+                    time.sleep(1)  # Brief delay before retry
+                else:
+                    logger.error(f"{log_prefix}Agent3 (Email Composer) failed after {max_retries + 1} attempts")
+                    raise
+
+    # Add generated_at timestamp if not present
+    if "generated_at" not in response_dict:
+        response_dict["generated_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Validate and return as typed model
+    output = Agent3Output.model_validate(response_dict)
+    logger.info(f"{log_prefix}Email Composer generated email: {output.email_subject}")
 
     return output
