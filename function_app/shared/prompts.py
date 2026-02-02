@@ -120,7 +120,7 @@ Please provide your analysis as a JSON response with the following structure:
     }},
     "document_extraction": {{
         "status": "success | failed | not_accessible",
-        "document_type": "claim_form | invoice | diagnostic_report | estimate | unknown | null",
+        "document_type": "claim_form | damage_photos | invoice | unknown | null",
         "summary": "2-3 sentence summary of the document content",
         "extracted_fields": {{
             "claimant_name": "Name from document or null",
@@ -182,7 +182,7 @@ AGENT2_USER_PROMPT_TEMPLATE = """Evaluate the following claim data and provide a
 1. AA-01: Contract must be in Active status
 2. AA-02: Claim date must be within coverage period
 3. AA-03: Vehicle mileage must be within coverage limits
-4. AA-04: All required documents must be present (repair estimate, diagnostic report)
+4. AA-04: All required documents must be present (damage photos, claim form)
 5. AA-05: Repair must be performed at an authorized facility for full coverage
 6. AA-06: Claim amount must be within coverage limits
 7. AA-07: No pre-existing conditions

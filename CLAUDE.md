@@ -6,6 +6,11 @@ This project implements Human-in-the-Loop (HITL) orchestration between two Azure
 
 ## Development Rules
 
+### **IMPORTANT: Git Commit Rules**
+- **NEVER** include "Claude" or "Co-Authored-By: Claude" in commit messages
+- **ALWAYS** confirm commit message with user before committing
+- Keep commit messages concise and descriptive
+
 ### Package Management
 - **ALWAYS** add new packages to `function_app/requirements.txt` first
 - **ALWAYS** install via `pip install -r requirements.txt`, never install packages directly with `pip install <package>`

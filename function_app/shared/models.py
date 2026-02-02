@@ -93,7 +93,7 @@ class DocumentExtraction(BaseModel):
         ..., description="Whether document extraction succeeded"
     )
     document_type: Optional[str] = Field(
-        None, description="Type of document (claim_form, invoice, diagnostic_report, etc.)"
+        None, description="Type of document (claim_form, damage_photos, invoice, etc.)"
     )
     summary: Optional[str] = Field(
         None, description="2-3 sentence summary of document content"

@@ -465,28 +465,16 @@
                     <div class="card-header bg-primary text-white">Documents</div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="docRepairEstimate" name="documents.repair_estimate">
-                                    <label class="form-check-label" for="docRepairEstimate">Repair Estimate</label>
+                                    <input class="form-check-input" type="checkbox" id="docDamagePhotos" name="documents.damage_photos">
+                                    <label class="form-check-label" for="docDamagePhotos">Damage Photos</label>
                                 </div>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="docDiagnosticReport" name="documents.diagnostic_report">
-                                    <label class="form-check-label" for="docDiagnosticReport">Diagnostic Report</label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="docPhotos" name="documents.photos">
-                                    <label class="form-check-label" for="docPhotos">Photos</label>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="docPriorAuth" name="documents.prior_authorization">
-                                    <label class="form-check-label" for="docPriorAuth">Prior Authorization</label>
+                                    <input class="form-check-input" type="checkbox" id="docClaimForm" name="documents.claim_form">
+                                    <label class="form-check-label" for="docClaimForm">Claim Form</label>
                                 </div>
                             </div>
                         </div>
@@ -715,10 +703,8 @@
                     total_estimate: getNumericValue('totalEstimate') || 0
                 },
                 documents: {
-                    repair_estimate: getChecked('docRepairEstimate'),
-                    diagnostic_report: getChecked('docDiagnosticReport'),
-                    photos: getChecked('docPhotos'),
-                    prior_authorization: getChecked('docPriorAuth')
+                    damage_photos: getChecked('docDamagePhotos'),
+                    claim_form: getChecked('docClaimForm')
                 }
             };
         }

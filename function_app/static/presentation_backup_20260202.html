@@ -76,145 +76,97 @@
             font-size: 1.1rem;
         }
 
-        /* Vertical Workflow Diagram */
+        /* Workflow Diagram */
         .workflow-container {
             background: white;
             border-radius: 16px;
-            padding: 2rem;
+            padding: 3rem;
             box-shadow: 0 10px 40px rgba(0,0,0,0.1);
             margin-bottom: 2rem;
         }
-        .workflow-vertical {
+        .workflow {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .workflow-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            flex-wrap: wrap;
             gap: 1rem;
-            width: 100%;
         }
-        .workflow-node {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .workflow::before {
+            content: '';
+            position: absolute;
+            top: 60px;
+            left: 10%;
+            right: 10%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--success));
+            z-index: 0;
+        }
+        .workflow-step {
+            flex: 1;
+            min-width: 150px;
+            max-width: 200px;
             text-align: center;
+            position: relative;
+            z-index: 1;
         }
-        .node-icon {
-            width: 80px;
-            height: 80px;
+        .step-icon {
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            margin: 0 auto 1rem;
+            font-size: 2.5rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
             position: relative;
         }
-        .node-icon.module {
-            background: linear-gradient(135deg, #607d8b 0%, #90a4ae 100%);
-            color: white;
-        }
-        .node-icon.agent {
+        .step-icon.agent {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             color: white;
         }
-        .node-icon.human {
+        .step-icon.human {
             background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);
             color: white;
         }
-        .node-icon.output {
+        .step-icon.input {
+            background: linear-gradient(135deg, #607d8b 0%, #90a4ae 100%);
+            color: white;
+        }
+        .step-icon.output {
             background: linear-gradient(135deg, var(--success) 0%, #81c784 100%);
             color: white;
         }
-        .node-icon.tbd {
-            background: linear-gradient(135deg, #9e9e9e 0%, #bdbdbd 100%);
-            color: white;
-            border: 3px dashed #666;
+        .step-label {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
         }
-        .node-number {
+        .step-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .step-number {
             position: absolute;
             top: -5px;
             right: -5px;
-            width: 26px;
-            height: 26px;
+            width: 30px;
+            height: 30px;
             background: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 0.8rem;
-            color: var(--primary);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-        .node-label {
-            font-weight: 600;
-            color: var(--primary);
-            margin-top: 0.5rem;
             font-size: 0.9rem;
-        }
-        .node-desc {
-            font-size: 0.75rem;
-            color: #666;
-            max-width: 140px;
-        }
-        .workflow-arrow {
-            font-size: 1.5rem;
             color: var(--primary);
-            line-height: 1;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-        .workflow-arrow-side {
-            font-size: 1.2rem;
-            color: var(--secondary);
-        }
-        .branch-container {
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            gap: 2rem;
-            position: relative;
-            padding: 0 1rem;
-        }
-        .branch-line {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            height: 2px;
-            background: var(--secondary);
-        }
-        .branch-connector-left, .branch-connector-right {
-            position: absolute;
-            top: 0;
-            width: 2px;
-            height: 20px;
-            background: var(--secondary);
-        }
-        .branch-connector-left { left: calc(50% - 100px); }
-        .branch-connector-right { right: calc(50% - 100px); }
-        .branch-label {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #666;
-            text-transform: uppercase;
-        }
-        .converge-arrow {
-            font-size: 1.2rem;
-            color: var(--secondary);
-        }
-        .tbd-badge {
-            background: #ffeb3b;
-            color: #333;
-            font-size: 0.6rem;
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-            font-weight: 600;
-            margin-top: 0.25rem;
+
+        /* Arrow between steps */
+        .workflow-arrow {
+            display: none;
         }
 
         /* Agent Cards */
@@ -234,9 +186,6 @@
         .agent-card.human-card {
             border-top-color: var(--secondary);
         }
-        .agent-card.email-card {
-            border-top-color: var(--success);
-        }
         .agent-icon {
             width: 80px;
             height: 80px;
@@ -253,10 +202,6 @@
         }
         .agent-icon.human {
             background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);
-            color: white;
-        }
-        .agent-icon.email {
-            background: linear-gradient(135deg, var(--success) 0%, #81c784 100%);
             color: white;
         }
         .agent-card h4 {
@@ -318,6 +263,79 @@
             margin: 0;
         }
 
+        /* State Preservation Diagram */
+        .state-diagram {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .state-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .state-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .state-row.active {
+            background: #fff3e0;
+            border-left-color: var(--secondary);
+        }
+        .state-row.completed {
+            background: #e8f5e9;
+            border-left-color: var(--success);
+        }
+        .state-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .state-row.active .state-number {
+            background: var(--secondary);
+        }
+        .state-row.completed .state-number {
+            background: var(--success);
+        }
+        .state-content {
+            flex: 1;
+        }
+        .state-title {
+            font-weight: 600;
+            color: #333;
+        }
+        .state-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .state-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .state-badge.saved {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .state-badge.waiting {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
         /* Benefits Section */
         .benefit-item {
             display: flex;
@@ -374,10 +392,6 @@
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
             border: 2px solid #a5d6a7;
         }
-        .arch-layer.tools {
-            background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
-            border: 2px solid #4fc3f7;
-        }
         .arch-layer.storage {
             background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
             border: 2px solid #f48fb1;
@@ -407,6 +421,23 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
+        /* Tech Stack */
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: white;
+            border-radius: 50px;
+            margin: 0.25rem;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .tech-badge img {
+            width: 20px;
+            height: 20px;
+        }
+
         /* CTA Section */
         .cta-section {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
@@ -422,6 +453,30 @@
             padding: 0.75rem 2rem;
             font-size: 1.1rem;
             border-radius: 50px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .workflow::before { display: none; }
+            .workflow { flex-direction: column; align-items: center; }
+            .workflow-step { max-width: 100%; }
+            .section { padding: 2rem 0; }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate {
+            animation: fadeInUp 0.6s ease forwards;
         }
 
         /* Business Rules Styles */
@@ -474,6 +529,59 @@
             font-weight: 600;
             color: var(--primary);
             white-space: nowrap;
+        }
+        .decision-flow {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        .flow-step {
+            background: white;
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            margin: 0.25rem auto;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            display: inline-block;
+            font-size: 0.75rem;
+            max-width: 120px;
+        }
+        .flow-step.start {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+        .flow-step.decision {
+            background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);
+            color: white;
+        }
+        .flow-step.outcome-approve {
+            background: linear-gradient(135deg, var(--success) 0%, #81c784 100%);
+            color: white;
+            font-size: 0.7rem;
+        }
+        .flow-step.outcome-review {
+            background: linear-gradient(135deg, #9c27b0 0%, #ba68c8 100%);
+            color: white;
+            font-size: 0.7rem;
+        }
+        .flow-arrow {
+            font-size: 1rem;
+            color: #999;
+            margin: 0.15rem 0;
+            line-height: 1;
+        }
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+        }
+        .flow-branch-label {
+            font-size: 0.65rem;
+            color: #666;
+            width: 25px;
         }
 
         /* Horizontal Flowchart */
@@ -556,6 +664,16 @@
             color: #9c27b0;
             line-height: 1;
         }
+        @media (max-width: 768px) {
+            .flowchart-horizontal {
+                flex-direction: column;
+                align-items: center;
+            }
+            .flowchart-arrow {
+                transform: rotate(90deg);
+                margin: 0.5rem 0;
+            }
+        }
 
         .example-box {
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
@@ -595,36 +713,6 @@
             text-align: center;
             font-weight: 600;
         }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .section { padding: 2rem 0; }
-            .branch-container { flex-direction: column; gap: 1rem; }
-            .flowchart-horizontal {
-                flex-direction: column;
-                align-items: center;
-            }
-            .flowchart-arrow {
-                transform: rotate(90deg);
-                margin: 0.5rem 0;
-            }
-        }
-
-        /* Animation */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .animate {
-            animation: fadeInUp 0.6s ease forwards;
-        }
     </style>
 </head>
 <body>
@@ -641,99 +729,57 @@
         </div>
     </section>
 
-    <!-- Workflow Section - Top-Down -->
+    <!-- Workflow Section -->
     <section class="section">
         <div class="container">
             <h2 class="section-title">End-to-End Workflow</h2>
             <p class="section-subtitle">Intelligent automation with human oversight at critical decision points</p>
 
             <div class="workflow-container">
-                <div class="workflow-vertical">
-                    <!-- Step 1: Message Extractor -->
-                    <div class="workflow-node">
-                        <div class="node-icon module">
-                            <span class="node-number">1</span>
+                <div class="workflow">
+                    <div class="workflow-step">
+                        <div class="step-icon input">
+                            <span class="step-number">1</span>
                             &#128233;
                         </div>
-                        <div class="node-label">Message Extractor Module</div>
-                        <div class="node-desc">Gets content & attachment URLs as JSON from Email/Teams/Chatbot queue</div>
+                        <div class="step-label">Claim Received</div>
+                        <div class="step-desc">Email with PDF attachment arrives</div>
                     </div>
 
-                    <div class="workflow-arrow">&#8595;</div>
-
-                    <!-- Step 2: Classifier Agent -->
-                    <div class="workflow-node">
-                        <div class="node-icon agent">
-                            <span class="node-number">2</span>
+                    <div class="workflow-step">
+                        <div class="step-icon agent">
+                            <span class="step-number">2</span>
                             &#129302;
                         </div>
-                        <div class="node-label">Classifier Agent</div>
-                        <div class="node-desc">AI extracts & classifies claim data</div>
+                        <div class="step-label">Classifier Agent</div>
+                        <div class="step-desc">AI extracts & classifies claim data</div>
                     </div>
 
-                    <div class="workflow-arrow">&#8595;</div>
-
-                    <!-- Branch: Damage Estimate -->
-                    <div class="text-center mb-2">
-                        <span class="branch-label">Damage Estimation</span>
-                    </div>
-                    <div class="branch-container">
-                        <div class="workflow-node">
-                            <div class="workflow-arrow-side">&#8601;</div>
-                            <div class="node-icon tbd" style="width: 70px; height: 70px; font-size: 1.5rem;">
-                                &#129302;
-                            </div>
-                            <div class="node-label" style="font-size: 0.8rem;">Damage Estimate Agent</div>
-                            <div class="tbd-badge">TBD</div>
+                    <div class="workflow-step">
+                        <div class="step-icon human">
+                            <span class="step-number">3</span>
+                            &#128100;
                         </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; padding-top: 25px;">
-                            <span style="font-size: 0.7rem; color: #666; font-weight: 600;">OR</span>
-                        </div>
-                        <div class="workflow-node">
-                            <div class="workflow-arrow-side">&#8600;</div>
-                            <div class="node-icon human" style="width: 70px; height: 70px; font-size: 1.5rem;">
-                                <span class="node-number" style="width: 22px; height: 22px; font-size: 0.7rem;">3</span>
-                                &#128100;
-                            </div>
-                            <div class="node-label" style="font-size: 0.8rem;">Human Review</div>
-                            <div class="node-desc" style="font-size: 0.7rem;">Manual damage estimate entry</div>
-                        </div>
+                        <div class="step-label">Human Review</div>
+                        <div class="step-desc">Manual damage estimate entry</div>
                     </div>
 
-                    <div class="converge-arrow">&#8595;</div>
-
-                    <!-- Step 4: Adjudicator Agent -->
-                    <div class="workflow-node">
-                        <div class="node-icon agent">
-                            <span class="node-number">4</span>
+                    <div class="workflow-step">
+                        <div class="step-icon agent">
+                            <span class="step-number">4</span>
                             &#129302;
                         </div>
-                        <div class="node-label">Adjudicator Agent</div>
-                        <div class="node-desc">AI evaluates & decides claim</div>
+                        <div class="step-label">Adjudicator Agent</div>
+                        <div class="step-desc">AI evaluates & decides claim</div>
                     </div>
 
-                    <div class="workflow-arrow">&#8595;</div>
-
-                    <!-- Step 5: Decision -->
-                    <div class="workflow-node">
-                        <div class="node-icon output">
-                            <span class="node-number">5</span>
+                    <div class="workflow-step">
+                        <div class="step-icon output">
+                            <span class="step-number">5</span>
                             &#10004;
                         </div>
-                        <div class="node-label">Decision</div>
-                        <div class="node-desc">Approved, Denied, or Manual Review</div>
-                    </div>
-
-                    <div class="workflow-arrow">&#8595;</div>
-
-                    <!-- Step 6: Email Composer Agent -->
-                    <div class="workflow-node">
-                        <div class="node-icon agent" style="background: linear-gradient(135deg, var(--success) 0%, #66bb6a 100%);">
-                            <span class="node-number">6</span>
-                            &#9993;
-                        </div>
-                        <div class="node-label">Email Composer Agent</div>
-                        <div class="node-desc">Composes & sends notification to customer</div>
+                        <div class="step-label">Decision</div>
+                        <div class="step-desc">Approved, Denied, or Manual Review</div>
                     </div>
                 </div>
             </div>
@@ -743,7 +789,7 @@
     <!-- Durable State Preservation Section -->
     <section class="section" style="background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);">
         <div class="container">
-            <h2 class="section-title">Long State Preservation using Azure Durable Functions</h2>
+            <h2 class="section-title">Long State Preservation using Durable Azure Functions</h2>
             <p class="section-subtitle">Workflow state is preserved across all stages - even during human review delays</p>
 
             <!-- Feature Cards Grid -->
@@ -809,21 +855,22 @@
             <p class="section-subtitle">Specialized agents working together with human expertise</p>
 
             <div class="row g-4">
-                <div class="col-lg-3 col-md-6">
+                <div class="col-md-4">
                     <div class="agent-card">
                         <div class="agent-icon ai">&#129302;</div>
                         <h4>Claim Classifier Agent</h4>
                         <ul class="capabilities">
-                            <li><span class="check">&#10003;</span> Extracts data from channel content</li>
-                            <li><span class="check">&#10003;</span> Processes attachments (PDF, Photos, Doc)</li>
+                            <li><span class="check">&#10003;</span> Extracts data from emails</li>
+                            <li><span class="check">&#10003;</span> Processes PDF attachments</li>
                             <li><span class="check">&#10003;</span> Classifies claim types (VSC, GAP, PPM, etc.)</li>
+                            <li><span class="check">&#10003;</span> Identifies component categories</li>
                             <li><span class="check">&#10003;</span> Provides confidence scores</li>
                             <li><span class="check">&#10003;</span> Flags missing information</li>
                         </ul>
                     </div>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
+                <div class="col-md-4">
                     <div class="agent-card human-card">
                         <div class="agent-icon human">&#128100;</div>
                         <h4>Human Reviewer</h4>
@@ -832,12 +879,13 @@
                             <li><span class="check">&#10003;</span> Enters damage estimates</li>
                             <li><span class="check">&#10003;</span> Validates claim data</li>
                             <li><span class="check">&#10003;</span> Adds parts & labor costs</li>
+                            <li><span class="check">&#10003;</span> Provides expert judgment</li>
                             <li><span class="check">&#10003;</span> Handles edge cases</li>
                         </ul>
                     </div>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
+                <div class="col-md-4">
                     <div class="agent-card">
                         <div class="agent-icon ai">&#129302;</div>
                         <h4>Claim Adjudicator Agent</h4>
@@ -847,20 +895,7 @@
                             <li><span class="check">&#10003;</span> Validates mileage limits</li>
                             <li><span class="check">&#10003;</span> Applies deductibles</li>
                             <li><span class="check">&#10003;</span> Auto-approves eligible claims</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <div class="agent-card email-card">
-                        <div class="agent-icon email">&#9993;</div>
-                        <h4>Email Composer Agent</h4>
-                        <ul class="capabilities">
-                            <li><span class="check">&#10003;</span> Composes approval emails</li>
-                            <li><span class="check">&#10003;</span> Generates denial notices</li>
-                            <li><span class="check">&#10003;</span> Personalizes content</li>
-                            <li><span class="check">&#10003;</span> Includes claim details</li>
-                            <li><span class="check">&#10003;</span> Sends to customer</li>
+                            <li><span class="check">&#10003;</span> Routes complex claims to review</li>
                         </ul>
                     </div>
                 </div>
@@ -874,37 +909,34 @@
             <h2 class="section-title">Agent Processing Logic</h2>
             <p class="section-subtitle">How AI agents extract, classify, and evaluate claims</p>
 
-            <!-- Classifier Agent Heading -->
-            <h4 class="text-center mb-3" style="color: var(--primary);">&#129302; Classifier Agent</h4>
-
             <!-- Classifier Agent Row -->
             <div class="row g-4 mb-4">
                 <!-- Classifier Agent - Extraction -->
                 <div class="col-lg-6">
                     <div class="rules-container">
-                        <h5>&#128269; Data Extraction</h5>
+                        <h5>&#129302; Classifier Agent - Data Extraction</h5>
                         <div class="row">
                             <div class="col-md-6">
-                                <p class="text-muted small mb-2"><strong>1. Channel Content Parsing</strong></p>
+                                <p class="text-muted small mb-2"><strong>1. Email Parsing</strong></p>
                                 <ul class="coverage-list" style="font-size: 0.85rem;">
-                                    <li><span class="covered">&#10003;</span> Uses Message Extractor Module</li>
-                                    <li><span class="covered">&#10003;</span> Sender email/user ID</li>
+                                    <li><span class="covered">&#10003;</span> Sender email address</li>
                                     <li><span class="covered">&#10003;</span> Issue description</li>
                                     <li><span class="covered">&#10003;</span> Customer details</li>
+                                    <li><span class="covered">&#10003;</span> Vehicle info (if mentioned)</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <p class="text-muted small mb-2"><strong>2. Document Intelligence</strong></p>
                                 <ul class="coverage-list" style="font-size: 0.85rem;">
                                     <li><span class="covered">&#128196;</span> Calls Azure Doc Intelligence</li>
-                                    <li><span class="covered">&#10003;</span> Extracts PDF, Photos, Doc files</li>
+                                    <li><span class="covered">&#10003;</span> Extracts PDF form fields</li>
                                     <li><span class="covered">&#10003;</span> VIN, Odometer, Dates</li>
                                     <li><span class="covered">&#10003;</span> Contract & claimant info</li>
                                 </ul>
                             </div>
                         </div>
                         <div class="mt-2 p-2 bg-light rounded small">
-                            <strong>Merge Logic:</strong> Document values override channel values (except issue summary uses customer's own words)
+                            <strong>Merge Logic:</strong> Document values override email values (except issue summary uses customer's own words)
                         </div>
                     </div>
                 </div>
@@ -912,7 +944,7 @@
                 <!-- Classifier Agent - Classification -->
                 <div class="col-lg-6">
                     <div class="rules-container">
-                        <h5>&#127919; Claim Classification</h5>
+                        <h5>&#127919; Classifier Agent - Claim Classification</h5>
                         <p class="text-muted small mb-2"><strong>Contract Type Detection:</strong></p>
                         <table class="rules-table" style="font-size: 0.85rem;">
                             <tbody>
@@ -939,7 +971,7 @@
                             </tbody>
                         </table>
                         <div class="mt-2 p-2 bg-light rounded small">
-                            <strong>Output:</strong> Claim type, sub-type, urgency level, confidence score (0-100%)
+                            <strong>Output:</strong> Claim type, sub-type, component category, urgency level, confidence score (0-100%)
                         </div>
                     </div>
                 </div>
@@ -1114,77 +1146,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Email Composer Agent -->
-            <h4 class="text-center mb-3 mt-5" style="color: var(--primary);">&#9993; Email Composer Agent</h4>
-            <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="rules-container">
-                        <h5>&#128172; Input Parameters</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p class="text-muted small mb-2"><strong>Recipient Details</strong></p>
-                                <ul class="coverage-list" style="font-size: 0.85rem;">
-                                    <li><span class="covered">&#10003;</span> Recipient name</li>
-                                    <li><span class="covered">&#10003;</span> Recipient email</li>
-                                    <li><span class="covered">&#10003;</span> Sender name</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="text-muted small mb-2"><strong>Content</strong></p>
-                                <ul class="coverage-list" style="font-size: 0.85rem;">
-                                    <li><span class="covered">&#10003;</span> Email purpose</li>
-                                    <li><span class="covered">&#10003;</span> Outcome summary</li>
-                                    <li><span class="covered">&#10003;</span> Additional context</li>
-                                    <li><span class="covered">&#10003;</span> Predefined template/format</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="mt-2 p-2 bg-light rounded small">
-                            <strong>Output:</strong> JSON with email_subject, email_body, recipient details
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-6">
-                    <div class="rules-container">
-                        <h5>&#127912; Style Settings</h5>
-                        <table class="rules-table" style="font-size: 0.85rem;">
-                            <thead>
-                                <tr>
-                                    <th>Setting</th>
-                                    <th>Options</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="rule-id">Tone</td>
-                                    <td>Formal | Casual | Urgent</td>
-                                </tr>
-                                <tr>
-                                    <td class="rule-id">Length</td>
-                                    <td>Brief | Standard | Detailed</td>
-                                </tr>
-                                <tr>
-                                    <td class="rule-id">Empathy</td>
-                                    <td>Neutral | Warm | Highly Supportive</td>
-                                </tr>
-                                <tr>
-                                    <td class="rule-id">Call to Action</td>
-                                    <td>None | Soft | Direct</td>
-                                </tr>
-                                <tr>
-                                    <td class="rule-id">Persona</td>
-                                    <td>Name in signature (e.g., Claims Team, John Smith)</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="mt-2 p-2 bg-light rounded small">
-                            <strong>Customizable:</strong> Style settings configured per use case or dynamically based on context
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </section>
 
@@ -1219,17 +1180,7 @@
                     <div class="arch-items">
                         <div class="arch-item">&#129302; Classifier Agent (Azure AI Foundry)</div>
                         <div class="arch-item">&#129302; Adjudicator Agent (Azure AI Foundry)</div>
-                        <div class="arch-item">&#9993; Email Composer Agent (Azure AI Foundry)</div>
-                    </div>
-                </div>
-
-                <div class="arch-layer tools">
-                    <span class="arch-label">TOOLS LAYER</span>
-                    <div class="arch-items">
-                        <div class="arch-item">&#128196; Document Intelligence Tool</div>
-                        <div class="arch-item">&#128233; Channel Content Extraction Tool</div>
-                        <div class="arch-item">&#128295; Azure AI Foundry Tools</div>
-                        <div class="arch-item">&#128268; MCP Tools</div>
+                        <div class="arch-item">&#128196; Document Intelligence</div>
                     </div>
                 </div>
 
@@ -1272,7 +1223,7 @@
                     <div class="feature-card">
                         <div class="feature-icon">&#128196;</div>
                         <h5>Document Processing</h5>
-                        <p>Automatically extract data from PDFs, photos, and documents using AI</p>
+                        <p>Automatically extract data from PDFs and emails using AI</p>
                     </div>
                 </div>
 
@@ -1313,7 +1264,7 @@
                     <div class="benefit-item">
                         <div class="benefit-icon" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">&#128200;</div>
                         <div class="benefit-text">
-                            <h5>Faster Processing</h5>
+                            <h5>70% Faster Processing</h5>
                             <p>AI agents handle routine extraction and classification, dramatically reducing manual effort</p>
                         </div>
                     </div>
@@ -1348,7 +1299,7 @@
                         <div class="benefit-icon" style="background: linear-gradient(135deg, var(--secondary) 0%, #ffc107 100%);">&#128208;</div>
                         <div class="benefit-text">
                             <h5>Scalability</h5>
-                            <p>Auto-scales on demand to handle any volume of claims with the same infrastructure</p>
+                            <p>Handle 10 or 10,000 claims with the same infrastructure - auto-scales on demand</p>
                         </div>
                     </div>
 

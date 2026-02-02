@@ -112,10 +112,8 @@ def build_agent2_input(
             "total_estimate": claim_amounts.get("total_estimate", 0)
         },
         "documents": {
-            "repair_estimate": True,
-            "diagnostic_report": document_extraction.get("status") == "success",
-            "photos": False,
-            "prior_authorization": False
+            "damage_photos": False,
+            "claim_form": document_extraction.get("status") == "success"
         },
         "metadata": {
             "submission_date": datetime.now(timezone.utc).isoformat(),

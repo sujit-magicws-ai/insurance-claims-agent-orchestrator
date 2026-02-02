@@ -285,7 +285,7 @@ async def submit_estimate(req: func.HttpRequest, client) -> func.HttpResponse:
                 "contract": { "contract_number": "...", ... },
                 "vehicle": { "year": 2022, "make": "Honda", ... },
                 "repair": { "facility_name": "...", "total_estimate": 750.00, ... },
-                "documents": { "repair_estimate": true, ... }
+                "documents": { "damage_photos": true, "claim_form": true }
             }
         }
 

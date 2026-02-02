@@ -2,7 +2,7 @@
 
 > **Project:** Human-in-the-Loop Orchestration with Azure AI Foundry Agents
 > **Created:** 2026-02-01
-> **Status:** ✅ Completed
+> **Status:** 🔄 Phase 8 Planned (Email Composer Integration)
 > **Repository:** https://github.com/sujit-magicws-ai/insurance-claims-agent-orchestrator
 
 ---
@@ -18,10 +18,11 @@
 | 5 | Real Agent2 Integration & Full Flow | ✅ Completed | 2026-02-02 | 2026-02-02 |
 | 6 | Review UI & Notifications | ✅ Completed | 2026-02-02 | 2026-02-02 |
 | 7 | Claims Dashboard & Enhanced UI | ✅ Completed | 2026-02-02 | 2026-02-02 |
+| 8 | Email Composer Agent Integration | ⬜ Not Started | - | - |
 
 **Legend:** ⬜ Not Started | 🔄 In Progress | ✅ Completed | ⏸️ Blocked
 
-> **Note:** Original 8-phase plan consolidated to 6 phases. Real agent integration moved earlier (Phase 3) since agents were already deployed and tested. Phase 7 added for stakeholder demo UI.
+> **Note:** Original plan consolidated to 7 phases. Real agent integration moved earlier (Phase 3) since agents were already deployed and tested. Phase 7 added for stakeholder demo UI. Phase 8 added for Email Composer Agent integration (post-approval notifications).
 
 ---
 
@@ -649,6 +650,372 @@ Enhanced `agent_client.py` to handle malformed JSON from Azure AI Foundry agents
 
 ---
 
+## Phase 8: Email Composer Agent Integration
+
+### Objective
+Integrate the Email Composer Agent to automatically generate and send approval notification emails to claimants after the Adjudicator Agent auto-approves a claim.
+
+### Business Context
+When a claim is AUTO-APPROVED by the Adjudicator Agent, the system should automatically compose a professional notification email to the claimant informing them of:
+- Their claim has been approved
+- The approved amount
+- Next steps for reimbursement
+
+### Workflow Integration
+```
+[Claim Received]
+    ↓
+[Classifier Agent] ← (existing)
+    ↓
+[Human Review / Manual Estimate] ← (existing)
+    ↓
+[Adjudicator Agent] ← (existing)
+    ↓
+┌────────────────────────────────────────┐
+│         Decision Check                  │
+├─────────────┬────────────┬─────────────┤
+│ AUTO-APPROVED│ DENIED    │ MANUAL_REVIEW│
+└─────────────┴────────────┴─────────────┘
+      ↓              ↓            ↓
+[Email Composer]  [END]       [END]
+      ↓
+[END with email_output]
+```
+
+### Email Composer Agent Specifications
+
+**Agent Name:** `EmailComposerAgent`
+**Project Endpoint:** Same as existing agents (Azure AI Foundry)
+
+**Input Parameters (mapped from claim data):**
+
+| Parameter | Source | Example |
+|-----------|--------|---------|
+| `recipient_name` | `extracted_info.claimant_name` | "John Smith" |
+| `recipient_email` | `extracted_info.claimant_email` | "john.smith@email.com" |
+| `email_purpose` | Static | "Claim Approval Notification" |
+| `outcome_summary` | Built from Agent2 output | "Your VSC claim CLM-2026-00171 for $767.50 has been approved..." |
+| `sender_name` | Config / Static | "Claims Department" |
+| `tone` | Config | "formal" |
+| `length` | Config | "standard" |
+| `empathy` | Config | "warm" |
+| `call_to_action` | Config | "soft" |
+
+**Expected Output (JSON):**
+```json
+{
+  "email_subject": "Your Claim CLM-2026-00171 Has Been Approved",
+  "email_body": "Dear John Smith,\n\nWe are pleased to inform you that your vehicle service contract claim...",
+  "recipient_email": "john.smith@email.com",
+  "recipient_name": "John Smith"
+}
+```
+
+---
+
+### Phase 8A: Agent Client & Activity
+
+**Objective:** Create the Email Composer agent invocation infrastructure.
+
+**Deliverables:**
+- [ ] Update `shared/agent_client.py` with `invoke_email_composer()` function
+- [ ] Create `activities/agent3_activity.py` for Email Composer activity
+- [ ] Add `Agent3Input` and `Agent3Output` models to `shared/models.py`
+- [ ] Add Email Composer prompt template to `shared/prompts.py`
+- [ ] Add environment variables for Email Composer agent configuration
+
+**Files to Create/Modify:**
+
+| File | Change |
+|------|--------|
+| `shared/agent_client.py` | Add `invoke_email_composer(email_data: dict) -> dict` |
+| `activities/agent3_activity.py` | New file - Email Composer activity function |
+| `shared/models.py` | Add `Agent3Input`, `Agent3Output`, `EmailComposerConfig` models |
+| `shared/prompts.py` | Add `AGENT3_USER_PROMPT_TEMPLATE` |
+| `local.settings.json` | Add `AGENT3_PROJECT_ENDPOINT`, `AGENT3_NAME` |
+
+**New Models:**
+
+```python
+class EmailComposerConfig(BaseModel):
+    """Configuration for Email Composer Agent."""
+    tone: Literal["formal", "casual", "urgent"] = "formal"
+    length: Literal["brief", "standard", "detailed"] = "standard"
+    empathy: Literal["neutral", "warm", "highly_supportive"] = "warm"
+    call_to_action: Literal["none", "soft", "direct"] = "soft"
+    sender_name: str = "Claims Department"
+
+class Agent3Input(BaseModel):
+    """Input for Email Composer Agent."""
+    claim_id: str
+    recipient_name: str
+    recipient_email: str
+    email_purpose: str
+    outcome_summary: str
+    config: EmailComposerConfig = Field(default_factory=EmailComposerConfig)
+
+class Agent3Output(BaseModel):
+    """Output from Email Composer Agent."""
+    claim_id: str
+    email_subject: str
+    email_body: str
+    recipient_name: str
+    recipient_email: str
+    generated_at: datetime
+```
+
+**Testing Phase 8A:**
+
+1. [ ] Unit test `invoke_email_composer()` with mock mode
+2. [ ] Unit test Agent3 activity function with mock data
+3. [ ] Verify models serialize/deserialize correctly
+4. [ ] Test with real Email Composer Agent (standalone call):
+   ```bash
+   python tests/test_email_composer_activity.py
+   ```
+5. [ ] Expected: Returns valid JSON with email_subject and email_body
+
+---
+
+### Phase 8B: Orchestrator Integration
+
+**Objective:** Integrate Email Composer into the orchestration flow after AUTO-APPROVED decision.
+
+**Deliverables:**
+- [ ] Update orchestrator to check Agent2 decision
+- [ ] Call Agent3 activity only when `decision == "APPROVED"` and `decision_type == "AUTO"`
+- [ ] Build Agent3 input from Agent1 output + Agent2 output
+- [ ] Add `email_output` to `OrchestrationResult` model
+- [ ] Update custom status: `agent3_processing` → `email_composed`
+- [ ] Handle Agent3 errors gracefully (claim still approved, email failed)
+
+**Orchestrator Logic:**
+
+```python
+# After Agent2 activity
+if agent2_result.decision == "APPROVED" and agent2_result.decision_type == "AUTO":
+    context.set_custom_status({"step": "agent3_processing", ...})
+
+    email_input = build_email_composer_input(
+        claim_id=claim_id,
+        agent1_output=agent1_result,
+        agent2_output=agent2_result
+    )
+
+    try:
+        email_result = yield context.call_activity("agent3_email_composer", email_input)
+        context.set_custom_status({"step": "email_composed", ...})
+    except Exception as e:
+        # Log error but don't fail orchestration
+        email_result = {"error": str(e), "status": "failed"}
+```
+
+**Updated OrchestrationResult:**
+
+```python
+class OrchestrationResult(BaseModel):
+    # ... existing fields ...
+    agent3_output: Optional[Agent3Output] = Field(None, description="Email composition result from Agent3")
+```
+
+**Testing Phase 8B:**
+
+1. [ ] Start orchestration with test claim
+2. [ ] Submit manual estimate with low amount (triggers AUTO-APPROVE)
+3. [ ] Verify orchestration calls Agent3 after AUTO-APPROVED
+4. [ ] Verify custom status shows `agent3_processing` → `email_composed`
+5. [ ] Check status endpoint returns `agent3_output` with email content
+6. [ ] Test error handling: What happens if Email Composer fails?
+   - [ ] Claim should still be marked as approved
+   - [ ] `agent3_output` should contain error info
+
+**Test Commands:**
+```bash
+# Submit claim
+curl -X POST "http://localhost:7071/api/claims/start" -H "Content-Type: application/json" -d @test_claim.json
+
+# Submit low estimate (under $1,500 for AUTO-APPROVE)
+curl -X POST "http://localhost:7071/api/claims/approve/{instance_id}" -H "Content-Type: application/json" -d @test_estimate_low.json
+
+# Check status - should have agent3_output
+curl "http://localhost:7071/api/claims/status/{instance_id}"
+```
+
+---
+
+### Phase 8C: Dashboard & UI Updates
+
+**Objective:** Display email composition results in the Claims Dashboard.
+
+**Deliverables:**
+- [ ] Update Claims Dashboard to show "Email Sent" status indicator
+- [ ] Add Email Preview section in claim detail modal
+- [ ] Update workflow timeline to include Email Composer step
+- [ ] Add Email Composer status to claims table (icon/badge)
+- [ ] Show email subject and preview in detail view
+
+**Dashboard Changes (dashboard.html):**
+
+| Section | Change |
+|---------|--------|
+| Claims Table | Add "Email" column with ✉️ icon when email sent |
+| Status Badges | Add "Email Sent" badge for auto-approved claims with email |
+| Detail Modal | Add "Notification Email" section with subject + body preview |
+| Workflow Timeline | Add step: "Email Composed" (after Adjudicator) |
+
+**Claim Detail Modal - New Section:**
+
+```html
+<!-- Email Notification Section (shown for AUTO-APPROVED with email) -->
+<div class="card mt-3" id="emailSection" style="display: none;">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-envelope-check"></i> Approval Email Composed
+    </div>
+    <div class="card-body">
+        <p><strong>To:</strong> <span id="emailRecipient"></span></p>
+        <p><strong>Subject:</strong> <span id="emailSubject"></span></p>
+        <hr>
+        <p><strong>Preview:</strong></p>
+        <div id="emailBody" class="border p-3 bg-light" style="white-space: pre-wrap;"></div>
+    </div>
+</div>
+```
+
+**Testing Phase 8C:**
+
+1. [ ] Navigate to Dashboard: `http://localhost:7071/api/dashboard`
+2. [ ] Find an AUTO-APPROVED claim with email
+3. [ ] Verify ✉️ icon appears in claims table
+4. [ ] Click "View Details" on the claim
+5. [ ] Verify "Notification Email" section displays
+6. [ ] Verify email subject and body preview are correct
+7. [ ] Verify workflow timeline shows "Email Composed" step with timestamp
+
+---
+
+### Phase 8D: End-to-End Testing & Validation
+
+**Objective:** Validate the complete workflow from claim submission to email composition.
+
+**Test Scenarios:**
+
+**Scenario 8D.1: Happy Path - AUTO-APPROVED with Email**
+1. [ ] Submit new claim via Dashboard
+2. [ ] Wait for Classifier Agent to complete
+3. [ ] Submit Manual Estimate with:
+   - Total estimate under $1,500 (AUTO-APPROVE threshold)
+   - All documents checked (damage_photos, claim_form)
+4. [ ] Wait for Adjudicator Agent
+5. [ ] **Expected:** AUTO-APPROVED decision
+6. [ ] Wait for Email Composer Agent
+7. [ ] **Expected:** `agent3_output` with email_subject and email_body
+8. [ ] View in Dashboard - verify email preview
+
+**Scenario 8D.2: MANUAL_REVIEW - No Email**
+1. [ ] Submit claim with high estimate ($5,000+)
+2. [ ] Complete workflow
+3. [ ] **Expected:** MANUAL_REVIEW decision
+4. [ ] **Expected:** `agent3_output` is null (Email Composer not called)
+
+**Scenario 8D.3: DENIED - No Email**
+1. [ ] Submit claim that triggers denial (e.g., expired contract)
+2. [ ] Complete workflow
+3. [ ] **Expected:** DENIED decision
+4. [ ] **Expected:** `agent3_output` is null
+
+**Scenario 8D.4: Email Composer Failure**
+1. [ ] Temporarily misconfigure Email Composer agent
+2. [ ] Submit claim that would be AUTO-APPROVED
+3. [ ] **Expected:** Claim still AUTO-APPROVED
+4. [ ] **Expected:** `agent3_output` contains error info
+5. [ ] **Expected:** Orchestration completes successfully
+
+**Validation Checklist:**
+
+| Check | Expected |
+|-------|----------|
+| Email only sent for AUTO-APPROVED | ✓ |
+| Email recipient matches claimant | ✓ |
+| Email contains correct claim ID | ✓ |
+| Email contains approved amount | ✓ |
+| Dashboard shows email status | ✓ |
+| Timeline shows all steps | ✓ |
+| Error handling works | ✓ |
+
+---
+
+### Environment Variables for Phase 8
+
+Add to `local.settings.json`:
+
+```json
+{
+  "Values": {
+    "AGENT3_PROJECT_ENDPOINT": "https://your-project.services.ai.azure.com/api/projects/your-project",
+    "AGENT3_NAME": "EmailComposerAgent",
+    "EMAIL_COMPOSER_TONE": "formal",
+    "EMAIL_COMPOSER_LENGTH": "standard",
+    "EMAIL_COMPOSER_EMPATHY": "warm",
+    "EMAIL_COMPOSER_CTA": "soft",
+    "EMAIL_COMPOSER_SENDER_NAME": "Claims Department"
+  }
+}
+```
+
+---
+
+### Files Summary for Phase 8
+
+| File | Phase | Action |
+|------|-------|--------|
+| `shared/agent_client.py` | 8A | Modify - add `invoke_email_composer()` |
+| `shared/models.py` | 8A | Modify - add Agent3 models |
+| `shared/prompts.py` | 8A | Modify - add AGENT3 prompt template |
+| `activities/agent3_activity.py` | 8A | Create - Email Composer activity |
+| `function_app.py` | 8B | Modify - orchestrator logic |
+| `static/dashboard.html` | 8C | Modify - email display |
+| `tests/test_email_composer_activity.py` | 8A | Create - unit tests |
+| `tests/test_email_composer_e2e.py` | 8D | Create - E2E tests |
+
+---
+
+### Dependencies
+
+```
+Phase 8A ──→ Phase 8B ──→ Phase 8C ──→ Phase 8D
+(Client)    (Orchestrator) (UI)       (E2E Test)
+```
+
+- **8A**: Can be developed independently
+- **8B**: Requires 8A completion
+- **8C**: Requires 8B completion (needs data to display)
+- **8D**: Requires all previous phases
+
+---
+
+### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Email Composer Agent not deployed | Use mock mode for development |
+| Agent returns different JSON structure | Flexible model with Optional fields |
+| Email composition delays workflow | Async call with timeout, don't block approval |
+| Missing claimant email | Skip email, log warning, mark in output |
+
+---
+
+### Success Criteria
+
+Phase 8 is complete when:
+- [ ] AUTO-APPROVED claims trigger Email Composer Agent
+- [ ] Email contains correct claim details and approved amount
+- [ ] Dashboard displays email preview for sent emails
+- [ ] DENIED and MANUAL_REVIEW claims do not trigger email
+- [ ] Email Composer failures don't break the approval workflow
+- [ ] All test scenarios pass
+
+---
+
 ## Environment Configuration
 
 ### Local Development
@@ -722,8 +1089,8 @@ AGENT_MOCK_MODE=false  # Set to true to use mock responses
 ## Dependencies Between Phases
 
 ```
-Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 ──→ Phase 6 ──→ Phase 7
-(Setup)    (Models)   (Agent1)    (HITL)     (Agent2)    (UI)      (Dashboard)
+Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 ──→ Phase 6 ──→ Phase 7 ──→ Phase 8
+(Setup)    (Models)   (Agent1)    (HITL)     (Agent2)    (UI)      (Dashboard) (Email)
 ```
 
 - **Phase 1-2**: Project setup, no Azure dependency (can use mock mode)
@@ -732,6 +1099,7 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 - **Phase 5**: Adds real Agent2 integration
 - **Phase 6**: Adds review UI (can be developed in parallel with Phase 5)
 - **Phase 7**: Adds Claims Dashboard for stakeholder demos (depends on Phase 6)
+- **Phase 8**: Adds Email Composer Agent for post-approval notifications (depends on Phase 7)
 
 ---
 
@@ -810,4 +1178,6 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 2026-02-02 | Added robust JSON parsing for agent arithmetic expressions | - |
 | 2026-02-02 | Added json5 fallback parser and agent retry logic | - |
 | 2026-02-02 | **Phase 7 completed** - Claims Dashboard & Enhanced UI | - |
+| 2026-02-02 | Phase 8 planned - Email Composer Agent Integration | Claude |
+| 2026-02-02 | Added 4 sub-phases: 8A (Agent Client), 8B (Orchestrator), 8C (Dashboard), 8D (E2E Testing) | Claude |
 
