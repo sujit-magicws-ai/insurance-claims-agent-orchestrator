@@ -289,6 +289,16 @@
                                 <input type="text" class="form-control" id="claimantAddress" name="claimant.address">
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="lienholder" class="form-label">Lienholder</label>
+                                <input type="text" class="form-control" id="lienholder" name="claimant.lienholder" placeholder="N/A if none">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dateOfLoss" class="form-label">Date of Loss/Failure</label>
+                                <input type="date" class="form-control" id="dateOfLoss" name="claim.date_of_loss">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -600,17 +610,21 @@
             setValue('vehicleMake', extractedInfo.vehicle_make);
             setValue('vehicleModel', extractedInfo.vehicle_model);
             setValue('vehicleVin', extractedInfo.vehicle_vin);
-            setValue('currentMileage', '');
+            setValue('currentMileage', extractedInfo.current_odometer || '');
             setValue('purchaseMileage', '');
+
+            // Claim dates
+            setValue('dateOfLoss', extractedInfo.date_of_loss || '');
 
             // Repair
             setValue('facilityName', extractedInfo.repair_facility);
             setValue('facilityType', 'Authorized Dealer');
             setValue('diagnosis', extractedInfo.diagnosis || extractedInfo.issue_summary);
             setValue('repairType', `${classification.sub_type || 'Mechanical'} - ${classification.component_category || 'General'}`);
-            setValue('totalParts', extractedInfo.total_parts || 0);
-            setValue('totalLabor', extractedInfo.total_labor || 0);
-            setValue('totalEstimate', extractedInfo.total_estimate || 0);
+            // Note: Parts, labor, estimate are entered manually - not pre-filled from extraction
+            setValue('totalParts', '');
+            setValue('totalLabor', '');
+            setValue('totalEstimate', '');
 
             // Documents
             setChecked('docRepairEstimate', true);
@@ -654,7 +668,11 @@
                     name: getValue('claimantName') || null,
                     email: getValue('claimantEmail') || null,
                     phone: getValue('claimantPhone') || null,
-                    address: getValue('claimantAddress') || null
+                    address: getValue('claimantAddress') || null,
+                    lienholder: getValue('lienholder') || null
+                },
+                claim: {
+                    date_of_loss: getValue('dateOfLoss') || null
                 },
                 contract: {
                     contract_number: getValue('contractNumber') || null,

@@ -133,12 +133,12 @@ def _get_mock_agent1_response(input_data: Agent1Input) -> dict:
             "vehicle_make": "Honda",
             "vehicle_model": "Accord",
             "vehicle_vin": None,
+            "current_odometer": 45000,
+            "date_of_loss": "2026-01-28",
             "issue_summary": "Transmission issues reported - grinding noise when shifting",
             "repair_facility": "ABC Auto Service",
             "diagnosis": None,
-            "total_parts": None,
-            "total_labor": None,
-            "total_estimate": 767.50
+            "lienholder": None
         },
         "document_extraction": {
             "status": "success",
@@ -155,12 +155,12 @@ def _get_mock_agent1_response(input_data: Agent1Input) -> dict:
                 "vehicle_make": "Honda",
                 "vehicle_model": "Accord",
                 "vehicle_vin": "1HGCV1F34NA000123",
+                "current_odometer": 45000,
+                "date_of_loss": "2026-01-28",
                 "issue_summary": "Transmission repair needed",
                 "repair_facility": "ABC Auto Service, 123 Main St, Tampa, FL 33601",
                 "diagnosis": "Transmission solenoid failure",
-                "total_parts": 330.00,
-                "total_labor": 437.50,
-                "total_estimate": 767.50
+                "lienholder": "N/A"
             },
             "notes": None
         },
@@ -175,12 +175,12 @@ def _get_mock_agent1_response(input_data: Agent1Input) -> dict:
             "vehicle_make": "Honda",
             "vehicle_model": "Accord",
             "vehicle_vin": "1HGCV1F34NA000123",  # From document
+            "current_odometer": 45000,  # From document
+            "date_of_loss": "2026-01-28",  # From document
             "issue_summary": "Transmission issues reported - grinding noise when shifting",  # From email (preferred)
             "repair_facility": "ABC Auto Service, 123 Main St, Tampa, FL 33601",  # From document
             "diagnosis": "Transmission solenoid failure",  # From document
-            "total_parts": 330.00,
-            "total_labor": 437.50,
-            "total_estimate": 767.50
+            "lienholder": "N/A"  # From document
         }
     }
 

@@ -111,12 +111,12 @@ Please provide your analysis as a JSON response with the following structure:
         "vehicle_make": "Make or null",
         "vehicle_model": "Model or null",
         "vehicle_vin": "VIN mentioned in email or null",
+        "current_odometer": 45000 or null,
+        "date_of_loss": "YYYY-MM-DD or null",
         "issue_summary": "Customer's description of the problem in their own words",
         "repair_facility": "Facility name mentioned in email or null",
         "diagnosis": "Any diagnosis mentioned or null",
-        "total_parts": 0.00 or null,
-        "total_labor": 0.00 or null,
-        "total_estimate": 0.00 or null
+        "lienholder": "Lienholder/financing company or null"
     }},
     "document_extraction": {{
         "status": "success | failed | not_accessible",
@@ -131,12 +131,12 @@ Please provide your analysis as a JSON response with the following structure:
             "vehicle_make": "Make or null",
             "vehicle_model": "Model or null",
             "vehicle_vin": "VIN from document or null",
+            "current_odometer": 45000 or null,
+            "date_of_loss": "YYYY-MM-DD or null",
             "issue_summary": "Issue description from document or null",
             "repair_facility": "Facility name and address from document or null",
             "diagnosis": "Diagnosis from document or null",
-            "total_parts": 0.00 or null,
-            "total_labor": 0.00 or null,
-            "total_estimate": 0.00 or null
+            "lienholder": "Lienholder/financing company or null"
         }},
         "notes": "Any issues accessing or parsing the document, or additional observations"
     }},
@@ -150,12 +150,12 @@ Please provide your analysis as a JSON response with the following structure:
         "vehicle_make": "Merged: Document > Email",
         "vehicle_model": "Merged: Document > Email",
         "vehicle_vin": "Merged: Document > Email",
+        "current_odometer": "Merged: Document > Email",
+        "date_of_loss": "Merged: Document > Email",
         "issue_summary": "Merged: Email > Document (customer's own words preferred)",
         "repair_facility": "Merged: Document > Email",
         "diagnosis": "Merged: Document > Email",
-        "total_parts": "Merged: Document > Email",
-        "total_labor": "Merged: Document > Email",
-        "total_estimate": "Merged: Document > Email"
+        "lienholder": "Merged: Document > Email"
     }}
 }}
 

@@ -47,12 +47,12 @@ class EmailBodyExtraction(BaseModel):
     vehicle_make: Optional[str] = Field(None, description="Vehicle make")
     vehicle_model: Optional[str] = Field(None, description="Vehicle model")
     vehicle_vin: Optional[str] = Field(None, description="VIN mentioned in email")
+    current_odometer: Optional[int] = Field(None, description="Current mileage/odometer reading")
+    date_of_loss: Optional[str] = Field(None, description="Date when the issue/failure occurred")
     issue_summary: Optional[str] = Field(None, description="Customer's description of the problem")
     repair_facility: Optional[str] = Field(None, description="Repair facility name mentioned")
     diagnosis: Optional[str] = Field(None, description="Any diagnosis mentioned")
-    total_parts: Optional[float] = Field(None, description="Parts cost mentioned")
-    total_labor: Optional[float] = Field(None, description="Labor cost mentioned")
-    total_estimate: Optional[float] = Field(None, description="Total estimate mentioned")
+    lienholder: Optional[str] = Field(None, description="Lienholder/financing company if mentioned")
 
 
 class ExtractedInfo(BaseModel):
@@ -72,12 +72,12 @@ class ExtractedInfo(BaseModel):
     vehicle_make: Optional[str] = Field(None, description="Merged: Document > Email")
     vehicle_model: Optional[str] = Field(None, description="Merged: Document > Email")
     vehicle_vin: Optional[str] = Field(None, description="Merged: Document > Email")
+    current_odometer: Optional[int] = Field(None, description="Merged: Document > Email")
+    date_of_loss: Optional[str] = Field(None, description="Merged: Document > Email")
     issue_summary: Optional[str] = Field(None, description="Merged: Email > Document (customer's words)")
     repair_facility: Optional[str] = Field(None, description="Merged: Document > Email")
     diagnosis: Optional[str] = Field(None, description="Merged: Document > Email")
-    total_parts: Optional[float] = Field(None, description="Merged: Document > Email")
-    total_labor: Optional[float] = Field(None, description="Merged: Document > Email")
-    total_estimate: Optional[float] = Field(None, description="Merged: Document > Email")
+    lienholder: Optional[str] = Field(None, description="Merged: Document > Email")
 
 
 class Agent1Flags(BaseModel):

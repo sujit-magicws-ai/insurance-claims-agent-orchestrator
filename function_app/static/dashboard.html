@@ -1145,8 +1145,10 @@
                 { key: 'vehicle_make', label: 'Make' },
                 { key: 'vehicle_model', label: 'Model' },
                 { key: 'vehicle_vin', label: 'VIN' },
+                { key: 'current_odometer', label: 'Odometer', format: v => v.toLocaleString() + ' mi' },
+                { key: 'date_of_loss', label: 'Date of Loss' },
                 { key: 'repair_facility', label: 'Repair Facility' },
-                { key: 'total_estimate', label: 'Estimate', format: v => '$' + v.toFixed(2) }
+                { key: 'lienholder', label: 'Lienholder' }
             ];
 
             return fields

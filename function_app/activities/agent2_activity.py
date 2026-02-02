@@ -75,7 +75,8 @@ def build_agent2_input(
             "name": extracted_info.get("claimant_name"),
             "email": extracted_info.get("claimant_email"),
             "phone": extracted_info.get("claimant_phone"),
-            "address": extracted_info.get("claimant_address")
+            "address": extracted_info.get("claimant_address"),
+            "lienholder": extracted_info.get("lienholder")
         },
         "contract": {
             "contract_number": extracted_info.get("contract_number"),
@@ -93,8 +94,12 @@ def build_agent2_input(
             "make": extracted_info.get("vehicle_make"),
             "model": extracted_info.get("vehicle_model"),
             "vin": extracted_info.get("vehicle_vin"),
-            "current_mileage": None,
+            "current_mileage": extracted_info.get("current_odometer"),
             "purchase_mileage": None
+        },
+        "claim": {
+            "date_of_loss": extracted_info.get("date_of_loss"),
+            "date_reported": datetime.now(timezone.utc).strftime("%Y-%m-%d")
         },
         "repair": {
             "facility_name": extracted_info.get("repair_facility"),
@@ -102,9 +107,9 @@ def build_agent2_input(
             "diagnosis": extracted_info.get("diagnosis"),
             "issue_summary": extracted_info.get("issue_summary"),
             "repair_type": f"{classification.get('sub_type', 'Mechanical')} - {classification.get('component_category', 'General')}",
-            "total_parts": claim_amounts.get("total_parts_cost") or extracted_info.get("total_parts") or 0,
-            "total_labor": claim_amounts.get("total_labor_cost") or extracted_info.get("total_labor") or 0,
-            "total_estimate": claim_amounts.get("total_estimate") or extracted_info.get("total_estimate") or 0
+            "total_parts": claim_amounts.get("total_parts_cost", 0),
+            "total_labor": claim_amounts.get("total_labor_cost", 0),
+            "total_estimate": claim_amounts.get("total_estimate", 0)
         },
         "documents": {
             "repair_estimate": True,
