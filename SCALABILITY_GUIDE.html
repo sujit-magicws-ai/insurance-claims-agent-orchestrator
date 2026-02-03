@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalability Guide - Azure Durable Functions & AI Foundry Agents</title>
+    <style>
+        :root {
+            --primary-color: #0078d4;
+            --secondary-color: #106ebe;
+            --success-color: #107c10;
+            --warning-color: #ff8c00;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            margin-top: 40px;
+            border-left: 4px solid var(--primary-color);
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #444;
+            margin-top: 25px;
+        }
+
+        .executive-summary {
+            background: linear-gradient(135deg, #e8f4fd 0%, #d0e8f9 100%);
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .executive-summary h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .yes-badge {
+            background: var(--success-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-left: 4px solid var(--success-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fff4e5 0%, #ffe8cc 100%);
+            border-left: 4px solid var(--warning-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #e8f4fd 0%, #d0e8f9 100%);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .diagram {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.4;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+        }
+
+        code {
+            background: #e8e8e8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+
+        .scale-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .scale-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .scale-card h4 {
+            color: var(--primary-color);
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .scale-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--success-color);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .toc {
+            background: #f0f7ff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .toc ul {
+            columns: 2;
+        }
+
+        .toc li {
+            margin: 5px 0;
+        }
+
+        .toc a {
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .checkmark {
+            color: var(--success-color);
+            font-size: 1.2em;
+        }
+
+        blockquote {
+            border-left: 4px solid var(--primary-color);
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            font-style: italic;
+        }
+
+        .sources {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .sources h3 {
+            margin-top: 0;
+        }
+
+        .sources a {
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Scalability Guide</h1>
+        <p style="font-size: 1.2em; color: #666;">Azure Durable Functions & AI Foundry Agents</p>
+
+        <!-- Executive Summary -->
+        <div class="executive-summary">
+            <h3><span class="yes-badge">YES</span> This Architecture is Scalable</h3>
+            <p>The claims processing system built on <strong>Azure Durable Functions</strong> and <strong>Azure AI Foundry Agents</strong> is designed for enterprise-scale workloads. Both components offer automatic scaling, high availability, and can handle thousands of concurrent operations.</p>
+            <ul>
+                <li><strong>Azure Functions:</strong> Scales up to <strong>1,000 instances</strong> automatically</li>
+                <li><strong>AI Foundry Agents:</strong> Supports <strong>100,000 messages per thread</strong> with enterprise-grade limits</li>
+                <li><strong>Durable Functions:</strong> Built-in support for <strong>high-throughput orchestrations</strong></li>
+            </ul>
+        </div>
+
+        <div class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#azure-functions">Azure Functions Scalability</a></li>
+                <li><a href="#durable-functions">Durable Functions Scalability</a></li>
+                <li><a href="#ai-foundry">AI Foundry Agents Limits</a></li>
+                <li><a href="#how-to-scale">How to Scale</a></li>
+                <li><a href="#best-practices">Best Practices</a></li>
+                <li><a href="#architecture">Architecture Overview</a></li>
+            </ul>
+        </div>
+
+        <!-- Azure Functions Scalability -->
+        <h2 id="azure-functions">Azure Functions Scalability</h2>
+
+        <p>Azure Functions offers multiple hosting plans with different scaling characteristics:</p>
+
+        <table>
+            <tr>
+                <th>Hosting Plan</th>
+                <th>Max Instances</th>
+                <th>Timeout</th>
+                <th>Memory/Instance</th>
+                <th>Scaling</th>
+            </tr>
+            <tr>
+                <td><strong>Flex Consumption</strong> (Recommended)</td>
+                <td><strong>1,000</strong></td>
+                <td>Unbounded</td>
+                <td>4 GB</td>
+                <td>Per-function automatic</td>
+            </tr>
+            <tr>
+                <td><strong>Premium</strong></td>
+                <td>100 (Windows)</td>
+                <td>Unbounded</td>
+                <td>3.5-14 GB</td>
+                <td>Event-driven + prewarmed</td>
+            </tr>
+            <tr>
+                <td><strong>Dedicated</strong></td>
+                <td>10-30 (100 with ASE)</td>
+                <td>Unbounded</td>
+                <td>1.75-256 GB</td>
+                <td>Manual or autoscale</td>
+            </tr>
+            <tr>
+                <td><strong>Consumption</strong></td>
+                <td>200 (Windows)</td>
+                <td>10 min</td>
+                <td>1.5 GB</td>
+                <td>Event-driven automatic</td>
+            </tr>
+        </table>
+
+        <div class="grid-2">
+            <div class="scale-card">
+                <h4>🚀 Max Instances</h4>
+                <div class="number">1,000</div>
+                <p>With Flex Consumption plan, scale to 1,000 concurrent instances automatically based on demand.</p>
+            </div>
+            <div class="scale-card">
+                <h4>⚡ Scale to Zero</h4>
+                <div class="number">$0</div>
+                <p>When idle, scales down to zero instances - pay only for what you use.</p>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <strong>Key Point:</strong> Azure Functions automatically scales based on incoming events (Service Bus messages, HTTP requests). No manual intervention required for scaling up or down.
+        </div>
+
+        <!-- Durable Functions Scalability -->
+        <h2 id="durable-functions">Durable Functions Scalability</h2>
+
+        <p>Durable Functions adds orchestration capabilities with these scaling features:</p>
+
+        <h3>Concurrency Configuration</h3>
+
+        <table>
+            <tr>
+                <th>Setting</th>
+                <th>Default</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><code>maxConcurrentActivityFunctions</code></td>
+                <td>10 per worker</td>
+                <td>Max concurrent activity executions per instance</td>
+            </tr>
+            <tr>
+                <td><code>maxConcurrentOrchestratorFunctions</code></td>
+                <td>10 per worker</td>
+                <td>Max concurrent orchestrator executions per instance</td>
+            </tr>
+            <tr>
+                <td><code>partitionCount</code></td>
+                <td>4 (Azure Storage)</td>
+                <td>Number of partitions for message distribution</td>
+            </tr>
+        </table>
+
+        <h3>Storage Provider Comparison</h3>
+
+        <table>
+            <tr>
+                <th>Storage Provider</th>
+                <th>Max Partitions</th>
+                <th>Best For</th>
+            </tr>
+            <tr>
+                <td><strong>Azure Storage</strong> (Default)</td>
+                <td>16</td>
+                <td>General purpose, easy setup</td>
+            </tr>
+            <tr>
+                <td><strong>Netherite</strong></td>
+                <td>32</td>
+                <td>High throughput scenarios</td>
+            </tr>
+            <tr>
+                <td><strong>MSSQL</strong></td>
+                <td>N/A</td>
+                <td>Existing SQL infrastructure</td>
+            </tr>
+            <tr>
+                <td><strong>Durable Task Scheduler</strong> (New)</td>
+                <td>Highest</td>
+                <td>Maximum throughput, recommended for 2025+</td>
+            </tr>
+        </table>
+
+        <div class="info-box">
+            <strong>2025 Update:</strong> The new <strong>Durable Task Scheduler</strong> backend delivers the highest throughput and is recommended for high-scale orchestrations. It enables scaling from thousands of instances to zero while maintaining full control.
+        </div>
+
+        <!-- AI Foundry Agents -->
+        <h2 id="ai-foundry">Azure AI Foundry Agents - Quotas & Limits</h2>
+
+        <p>AI Foundry Agents have generous enterprise-grade limits:</p>
+
+        <table>
+            <tr>
+                <th>Resource</th>
+                <th>Limit</th>
+                <th>Notes</th>
+            </tr>
+            <tr>
+                <td>Files per agent/thread</td>
+                <td><strong>10,000</strong></td>
+                <td>Sufficient for large document processing</td>
+            </tr>
+            <tr>
+                <td>Maximum file size</td>
+                <td><strong>512 MB</strong></td>
+                <td>Per individual file</td>
+            </tr>
+            <tr>
+                <td>Total uploaded files size</td>
+                <td><strong>300 GB</strong></td>
+                <td>Per agent/thread</td>
+            </tr>
+            <tr>
+                <td>Messages per thread</td>
+                <td><strong>100,000</strong></td>
+                <td>Supports long conversations</td>
+            </tr>
+            <tr>
+                <td>Text content per message</td>
+                <td><strong>1,500,000 characters</strong></td>
+                <td>~375,000 words per message</td>
+            </tr>
+            <tr>
+                <td>Tools per agent</td>
+                <td><strong>128</strong></td>
+                <td>Custom tools/functions</td>
+            </tr>
+            <tr>
+                <td>Vector store tokens per file</td>
+                <td><strong>2,000,000</strong></td>
+                <td>For RAG/file search</td>
+            </tr>
+        </table>
+
+        <h3>Rate Limits</h3>
+
+        <div class="warning-box">
+            <strong>Default Rate Limit:</strong> 10 TPS (Transactions Per Second) per resource.
+            <br><br>
+            <strong>To increase:</strong> Submit a support ticket via Azure Portal with business justification.
+            <br><br>
+            <strong>Autoscale:</strong> Can be enabled to automatically adjust rate limits based on real-time usage (disabled by default).
+        </div>
+
+        <!-- How to Scale -->
+        <h2 id="how-to-scale">How to Scale</h2>
+
+        <h3>1. Azure Functions - Automatic Scaling</h3>
+
+        <div class="highlight-box">
+            <strong>No action required!</strong> Azure Functions scales automatically based on:
+            <ul>
+                <li>Queue depth (Service Bus messages waiting)</li>
+                <li>HTTP request rate</li>
+                <li>Event backlog</li>
+            </ul>
+        </div>
+
+        <h3>2. Durable Functions - Configuration</h3>
+
+        <p>Adjust concurrency in <code>host.json</code>:</p>
+
+<pre>{
+  "extensions": {
+    "durableTask": {
+      "maxConcurrentActivityFunctions": 20,
+      "maxConcurrentOrchestratorFunctions": 10,
+      "storageProvider": {
+        "partitionCount": 8
+      }
+    }
+  }
+}</pre>
+
+        <h3>3. AI Foundry Agents - Request Higher Limits</h3>
+
+        <ol>
+            <li>Go to Azure Portal → Your AI Foundry Resource</li>
+            <li>Click "New Support Request"</li>
+            <li>Request higher TPS with business justification</li>
+            <li>Enable Autoscale feature for dynamic scaling</li>
+        </ol>
+
+        <h3>4. Upgrade Hosting Plan</h3>
+
+        <table>
+            <tr>
+                <th>Current Load</th>
+                <th>Recommended Plan</th>
+            </tr>
+            <tr>
+                <td>Development / Low traffic</td>
+                <td>Consumption</td>
+            </tr>
+            <tr>
+                <td>Production / Variable traffic</td>
+                <td><strong>Flex Consumption</strong> (Recommended)</td>
+            </tr>
+            <tr>
+                <td>High traffic / Low latency critical</td>
+                <td>Premium (with always-ready instances)</td>
+            </tr>
+            <tr>
+                <td>Predictable high volume</td>
+                <td>Dedicated / App Service Environment</td>
+            </tr>
+        </table>
+
+        <!-- Best Practices -->
+        <h2 id="best-practices">Best Practices for Scaling</h2>
+
+        <div class="grid-2">
+            <div class="scale-card">
+                <h4>✅ Orchestrator Functions</h4>
+                <ul>
+                    <li>Keep lightweight - no I/O or CPU work</li>
+                    <li>Move heavy work to Activity Functions</li>
+                    <li>Use sub-orchestrations for large fan-out</li>
+                </ul>
+            </div>
+            <div class="scale-card">
+                <h4>✅ Activity Functions</h4>
+                <ul>
+                    <li>Scale independently and unbounded</li>
+                    <li>Safe for I/O and CPU operations</li>
+                    <li>Use retry policies for resilience</li>
+                </ul>
+            </div>
+            <div class="scale-card">
+                <h4>✅ AI Agents</h4>
+                <ul>
+                    <li>Use smaller, focused documents</li>
+                    <li>Rotate threads for long conversations</li>
+                    <li>Register only required tools</li>
+                </ul>
+            </div>
+            <div class="scale-card">
+                <h4>✅ Monitoring</h4>
+                <ul>
+                    <li>Enable Application Insights</li>
+                    <li>Monitor queue depths</li>
+                    <li>Track tail latencies</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Architecture Overview -->
+        <h2 id="architecture">Scalability Architecture</h2>
+
+        <div class="diagram">
+                                    ┌─────────────────────────────────────┐
+                                    │         LOAD BALANCER               │
+                                    │    (Azure Front Door / App GW)      │
+                                    └─────────────────┬───────────────────┘
+                                                      │
+                    ┌─────────────────────────────────┼─────────────────────────────────┐
+                    │                                 │                                 │
+                    ▼                                 ▼                                 ▼
+        ┌───────────────────┐           ┌───────────────────┐           ┌───────────────────┐
+        │  Function App     │           │  Function App     │           │  Function App     │
+        │  Instance 1       │           │  Instance 2       │           │  Instance N       │
+        │                   │           │                   │           │  (up to 1,000)    │
+        │  ┌─────────────┐  │           │  ┌─────────────┐  │           │  ┌─────────────┐  │
+        │  │Orchestrator │  │           │  │Orchestrator │  │           │  │Orchestrator │  │
+        │  │ (10 conc.)  │  │           │  │ (10 conc.)  │  │           │  │ (10 conc.)  │  │
+        │  └─────────────┘  │           │  └─────────────┘  │           │  └─────────────┘  │
+        │  ┌─────────────┐  │           │  ┌─────────────┐  │           │  ┌─────────────┐  │
+        │  │ Activities  │  │           │  │ Activities  │  │           │  │ Activities  │  │
+        │  │ (10 conc.)  │  │           │  │ (10 conc.)  │  │           │  │ (10 conc.)  │  │
+        │  └─────────────┘  │           │  └─────────────┘  │           │  └─────────────┘  │
+        └─────────┬─────────┘           └─────────┬─────────┘           └─────────┬─────────┘
+                  │                               │                               │
+                  └───────────────────────────────┼───────────────────────────────┘
+                                                  │
+                                                  ▼
+        ┌─────────────────────────────────────────────────────────────────────────────────┐
+        │                           AZURE STORAGE (Shared State)                          │
+        │                                                                                 │
+        │   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐            │
+        │   │  Table Storage  │    │  Queue Storage  │    │  Blob Storage   │            │
+        │   │  (History)      │    │  (Work Items)   │    │  (Large Data)   │            │
+        │   └─────────────────┘    └─────────────────┘    └─────────────────┘            │
+        │                                                                                 │
+        └─────────────────────────────────────────────────────────────────────────────────┘
+                                                  │
+                                                  ▼
+        ┌─────────────────────────────────────────────────────────────────────────────────┐
+        │                         AZURE AI FOUNDRY (Agent Pool)                           │
+        │                                                                                 │
+        │   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐            │
+        │   │  Classifier     │    │  Adjudicator    │    │  Email Composer │            │
+        │   │  Agent          │    │  Agent          │    │  Agent          │            │
+        │   │  (10+ TPS)      │    │  (10+ TPS)      │    │  (10+ TPS)      │            │
+        │   └─────────────────┘    └─────────────────┘    └─────────────────┘            │
+        │                                                                                 │
+        │   • Global Standard deployments for dynamic routing                            │
+        │   • Autoscale available for rate limits                                        │
+        │   • Model router for optimal model selection                                   │
+        └─────────────────────────────────────────────────────────────────────────────────┘
+
+
+SCALING MATH EXAMPLE:
+─────────────────────
+• 100 Function instances × 10 concurrent activities = 1,000 parallel activities
+• Each activity can call AI Agent (10 TPS × 3 agents = 30 TPS total)
+• With increased limits: 100+ TPS per agent possible
+• Result: Thousands of claims processed concurrently
+</div>
+
+        <!-- Summary -->
+        <h2>Summary</h2>
+
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Scalability</th>
+                <th>How to Scale</th>
+            </tr>
+            <tr>
+                <td>Azure Functions</td>
+                <td><span class="checkmark">✔</span> Up to 1,000 instances</td>
+                <td>Automatic (event-driven)</td>
+            </tr>
+            <tr>
+                <td>Durable Functions</td>
+                <td><span class="checkmark">✔</span> High throughput with DTS</td>
+                <td>Configure partitions & concurrency</td>
+            </tr>
+            <tr>
+                <td>AI Foundry Agents</td>
+                <td><span class="checkmark">✔</span> Enterprise limits</td>
+                <td>Request higher TPS, enable autoscale</td>
+            </tr>
+            <tr>
+                <td>Service Bus</td>
+                <td><span class="checkmark">✔</span> Millions of messages/day</td>
+                <td>Upgrade tier, add partitions</td>
+            </tr>
+        </table>
+
+        <blockquote>
+            <strong>Bottom Line:</strong> This architecture can scale from handling a few claims per day to thousands of concurrent claims with minimal configuration changes. The serverless nature means you only pay for what you use, and scaling is automatic.
+        </blockquote>
+
+        <!-- Sources -->
+        <div class="sources">
+            <h3>Official Documentation Sources</h3>
+            <ul>
+                <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/functions-scale" target="_blank">Azure Functions Scale and Hosting</a></li>
+                <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-perf-and-scale" target="_blank">Performance and Scale in Durable Functions</a></li>
+                <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/event-driven-scaling" target="_blank">Event-driven Scaling in Azure Functions</a></li>
+                <li><a href="https://learn.microsoft.com/en-us/azure/ai-foundry/agents/quotas-limits" target="_blank">Quotas and Limits for Foundry Agent Service</a></li>
+                <li><a href="https://techcommunity.microsoft.com/blog/appsonazureblog/azure-functions-ignite-2025-update/4469815" target="_blank">Azure Functions Ignite 2025 Update</a></li>
+            </ul>
+        </div>
+
+        <hr style="margin-top: 40px;">
+        <p style="color: #666; text-align: center;">
+            Generated for DURFUNC Project | Claims Processing System Scalability Guide
+            <br>
+            <small>Last Updated: February 2026</small>
+        </p>
+    </div>
+</body>
+</html>

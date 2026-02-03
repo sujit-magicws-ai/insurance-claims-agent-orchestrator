@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Durable Functions - State Management & Async Pattern</title>
+    <style>
+        :root {
+            --primary-color: #0078d4;
+            --secondary-color: #106ebe;
+            --success-color: #107c10;
+            --warning-color: #ff8c00;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --code-bg: #1e1e1e;
+            --code-color: #d4d4d4;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            margin-top: 40px;
+            border-left: 4px solid var(--primary-color);
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #444;
+            margin-top: 25px;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #e8f4fd 0%, #d0e8f9 100%);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fff4e5 0%, #ffe8cc 100%);
+            border-left: 4px solid var(--warning-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .success-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-left: 4px solid var(--success-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        pre {
+            background: var(--code-bg);
+            color: var(--code-color);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        code {
+            background: #e8e8e8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .diagram {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.4;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .step-number {
+            background: var(--primary-color);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .toc {
+            background: #f0f7ff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .toc ul {
+            columns: 2;
+            -webkit-columns: 2;
+            -moz-columns: 2;
+        }
+
+        .toc li {
+            margin: 5px 0;
+        }
+
+        .toc a {
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+        }
+
+        blockquote {
+            border-left: 4px solid var(--primary-color);
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            font-style: italic;
+        }
+
+        .status-202 {
+            display: inline-block;
+            background: var(--warning-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .status-200 {
+            display: inline-block;
+            background: var(--success-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Azure Durable Functions</h1>
+        <p style="font-size: 1.2em; color: #666;">State Management, Replay Concept & Async Pattern</p>
+
+        <div class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#problem">The Problem: Stateless Functions</a></li>
+                <li><a href="#solution">The Solution: Checkpoint + Replay</a></li>
+                <li><a href="#storage">Storage Architecture</a></li>
+                <li><a href="#workflow">Claims Workflow (Full Activity Flow)</a></li>
+                <li><a href="#example">Replay Example: Step by Step</a></li>
+                <li><a href="#timeline">Visual Timeline</a></li>
+                <li><a href="#why-replay">Why Replay?</a></li>
+                <li><a href="#is-replaying">The is_replaying Flag</a></li>
+                <li><a href="#determinism">Determinism Rules</a></li>
+                <li><a href="#async-pattern">Async HTTP Pattern (202 + Polling)</a></li>
+                <li><a href="#summary">Summary</a></li>
+            </ul>
+        </div>
+
+        <!-- SECTION: The Problem -->
+        <h2 id="problem">The Problem: Functions Are Stateless</h2>
+
+        <p>Normal Azure Functions are <strong>stateless</strong> - they execute and forget everything:</p>
+
+        <div class="diagram">Function starts → Does work → Returns → Memory wiped clean</div>
+
+        <div class="warning-box">
+            <strong>Challenge:</strong> What if your workflow needs to:
+            <ul>
+                <li>Wait hours/days for human approval?</li>
+                <li>Survive server restarts?</li>
+                <li>Not cost money while waiting?</li>
+            </ul>
+            A function <strong>cannot stay running</strong> that long. It would time out, cost too much, and lose state if the server restarts.
+        </div>
+
+        <!-- SECTION: Solution -->
+        <h2 id="solution">The Solution: Checkpoint + Replay</h2>
+
+        <p>Durable Functions solve long-running workflows with a <strong>checkpoint and replay</strong> pattern:</p>
+
+        <div class="flow-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <strong>EXECUTE</strong> - Code runs until it hits a <code>yield</code> (wait point)
+            </div>
+        </div>
+
+        <div class="flow-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <strong>CHECKPOINT</strong> - Save progress to Azure Storage
+            </div>
+        </div>
+
+        <div class="flow-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <strong>SHUTDOWN</strong> - Function stops completely (memory freed, no cost)
+            </div>
+        </div>
+
+        <div class="flow-step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <strong>WAKE UP</strong> - When awaited task completes, function restarts
+            </div>
+        </div>
+
+        <div class="flow-step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                <strong>REPLAY</strong> - Re-run code, skip completed steps (from history)
+            </div>
+        </div>
+
+        <div class="flow-step">
+            <div class="step-number">6</div>
+            <div class="step-content">
+                <strong>CONTINUE</strong> - Execute new work from where it left off
+            </div>
+        </div>
+
+        <!-- SECTION: Storage -->
+        <h2 id="storage">Storage Architecture</h2>
+
+        <p>The Durable Task Framework <strong>automatically</strong> manages state storage:</p>
+
+        <div class="diagram">
+┌─────────────────────────────┐
+│   Your Orchestrator Code    │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│   Durable Task Framework    │  ← Built into Azure Functions
+│   (manages state for you)   │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    AZURE STORAGE ACCOUNT                         │
+├───────────────────┬───────────────────┬─────────────────────────┤
+│   TABLE STORAGE   │   QUEUE STORAGE   │     BLOB STORAGE        │
+│                   │                   │                         │
+│   Orchestration   │   Pending work    │   Large payloads        │
+│   history &       │   items waiting   │   (if data exceeds      │
+│   checkpoints     │   to be processed │   queue limits)         │
+└───────────────────┴───────────────────┴─────────────────────────┘
+</div>
+
+        <table>
+            <tr>
+                <th>Data</th>
+                <th>Storage</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>Orchestration history</td>
+                <td>Table Storage</td>
+                <td>Every completed step</td>
+            </tr>
+            <tr>
+                <td>Pending activities</td>
+                <td>Queue Storage</td>
+                <td>Work items waiting to run</td>
+            </tr>
+            <tr>
+                <td>Large payloads</td>
+                <td>Blob Storage</td>
+                <td>Data exceeding queue limits</td>
+            </tr>
+        </table>
+
+        <!-- SECTION: Full Workflow -->
+        <h2 id="workflow">Claims Workflow (Full Activity Flow)</h2>
+
+        <p>This is the complete orchestration flow implemented in <code>function_app.py</code>:</p>
+
+        <div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                        CLAIMS ORCHESTRATION WORKFLOW                                 │
+│                              (claim_orchestrator)                                    │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────────────────┐
+                    │           TRIGGERS              │
+                    ├────────────────┬────────────────┤
+                    │  HTTP Trigger  │ Service Bus    │
+                    │  POST /api/    │ Queue Trigger  │
+                    │  claims/start  │ (claims-inbox) │
+                    └───────┬────────┴───────┬────────┘
+                            │                │
+                            └───────┬────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 1: AGENT1 ACTIVITY (Claim Classifier Agent)                                   │
+│  ─────────────────────────────────────────────────                                  │
+│  • Receives: claim_id, email_content, attachment_url, sender_email                  │
+│  • Calls: Azure AI Foundry Agent (claim-assistant-agent)                            │
+│  • Returns: classification, confidence_score, extracted_info, document_extraction   │
+│  • Status: "agent1_processing" → "agent1_completed"                                 │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ CHECKPOINT (orchestrator shuts down)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 2: NOTIFY ACTIVITY                                                            │
+│  ───────────────────────                                                            │
+│  • Logs approval URL for human reviewer                                             │
+│  • Status: "sending_notification"                                                   │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ CHECKPOINT (orchestrator shuts down)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 3: WAIT FOR EXTERNAL EVENT (Human-in-the-Loop)                                │
+│  ───────────────────────────────────────────────────                                │
+│  • Event Name: "ApprovalDecision"                                                   │
+│  • Timeout: 24 hours (configurable via APPROVAL_TIMEOUT_HOURS)                      │
+│  • Status: "awaiting_approval"                                                      │
+│  • Human submits via: POST /api/claims/approve/{instance_id}                        │
+│                                                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │                         POSSIBLE OUTCOMES                                    │   │
+│  ├──────────────────┬──────────────────┬───────────────────────────────────────┤   │
+│  │     TIMEOUT      │    REJECTED      │              APPROVED                 │   │
+│  │   (24 hours)     │  (by reviewer)   │           (by reviewer)               │   │
+│  │        │         │        │         │                  │                    │   │
+│  │        ▼         │        ▼         │                  ▼                    │   │
+│  │   Return with    │   Return with    │         Continue to Step 4            │   │
+│  │ status="timeout" │ status="rejected"│                                       │   │
+│  └──────────────────┴──────────────────┴───────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ (if APPROVED)
+                                    ▼ CHECKPOINT (orchestrator shuts down)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 4: AGENT2 ACTIVITY (Claim Adjudicator Agent)                                  │
+│  ─────────────────────────────────────────────────                                  │
+│  • Receives: claim_id, agent1_output, approval_decision (with claim_data)           │
+│  • Calls: Azure AI Foundry Agent (claim-approval-agent)                             │
+│  • Returns: decision (APPROVED/DENIED/MANUAL_REVIEW/REQUEST_DOCUMENTS),             │
+│             approved_amount, deductible_applied, reason, rules_evaluated            │
+│  • Status: "agent2_processing" → "adjudicator_completed"                            │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ CHECKPOINT (orchestrator shuts down)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 5: AGENT3 ACTIVITY (Email Composer Agent)                                     │
+│  ──────────────────────────────────────────────                                     │
+│  • Receives: claim_id, agent1_output, agent2_output                                 │
+│  • Calls: Azure AI Foundry Agent (EmailComposerAgent)                               │
+│  • Builds: email_purpose, outcome_summary based on decision type                    │
+│  • Returns: email_subject, email_body, recipient_email, recipient_name              │
+│  • Status: "agent3_processing" → "email_composer_completed"                         │
+│                                                                                     │
+│  Email Tone by Decision:                                                            │
+│  ┌────────────────────┬─────────────────┬──────────────────────────────────────┐   │
+│  │ Decision           │ Tone            │ Purpose                              │   │
+│  ├────────────────────┼─────────────────┼──────────────────────────────────────┤   │
+│  │ APPROVED           │ warm            │ Claim Approval Notification          │   │
+│  │ DENIED             │ highly_support  │ Claim Decision Notification          │   │
+│  │ MANUAL_REVIEW      │ warm            │ Claim Status Update                  │   │
+│  │ REQUEST_DOCUMENTS  │ neutral         │ Additional Information Required      │   │
+│  └────────────────────┴─────────────────┴──────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ CHECKPOINT (orchestrator shuts down)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 6: SEND EMAIL ACTIVITY (Gmail SMTP)                                           │
+│  ────────────────────────────────────────                                           │
+│  • Receives: claim_id, email_subject, email_body, recipient_email                   │
+│  • Sends to: REVIEW_EMAIL_ADDRESS (for human review before sending to claimant)     │
+│  • SMTP: Gmail (smtp.gmail.com:587)                                                 │
+│  • Returns: success, review_email_sent, sent_at                                     │
+│  • Status: "sending_email" → "completed"                                            │
+│                                                                                     │
+│  Email Routing:                                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │  send_to_review: TRUE   → Sends to REVIEW_EMAIL_ADDRESS (for approval)      │   │
+│  │  send_to_claimant: FALSE → Does NOT send directly to claimant (safety)      │   │
+│  └─────────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  FINAL RESULT (OrchestrationResult)                                                 │
+│  ──────────────────────────────────                                                 │
+│  {                                                                                  │
+│    "claim_id": "CLM-2026-00142",                                                    │
+│    "status": "completed",                                                           │
+│    "agent1_output": { classification, extracted_info, document_extraction },        │
+│    "approval_decision": { reviewer, comments, claim_data },                         │
+│    "agent2_output": { decision, approved_amount, reason, rules_evaluated },         │
+│    "agent3_output": { email_subject, email_body, recipient_email },                 │
+│    "email_send_result": { success, review_email_sent, sent_at },                    │
+│    "stage_timestamps": { received, classifier_started, ..., completed }             │
+│  }                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+</div>
+
+        <h3>Activity Functions Summary</h3>
+
+        <table>
+            <tr>
+                <th>Step</th>
+                <th>Activity</th>
+                <th>Agent/Service</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td><code>agent1_activity</code></td>
+                <td>claim-assistant-agent</td>
+                <td>Classify claim, extract info from email & PDF</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><code>notify_activity</code></td>
+                <td>(internal)</td>
+                <td>Log approval URL for reviewer</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>wait_for_external_event</code></td>
+                <td>(HITL)</td>
+                <td>Wait for human to submit estimate</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><code>agent2_activity</code></td>
+                <td>claim-approval-agent</td>
+                <td>Adjudicate claim, decide approval</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>agent3_activity</code></td>
+                <td>EmailComposerAgent</td>
+                <td>Compose notification email</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><code>send_email_activity</code></td>
+                <td>Gmail SMTP</td>
+                <td>Send email to review address</td>
+            </tr>
+        </table>
+
+        <!-- SECTION: Real Example -->
+        <h2 id="example">Replay Example: Step by Step</h2>
+
+        <h3>Run 1: Orchestrator Starts</h3>
+
+<pre><code># Code executes line by line...
+claim_id = input.get("claim_id")                              # ✅ Executes
+agent1_result = yield call_activity("agent1_activity", input) # ⏸️ CHECKPOINT</code></pre>
+
+        <div class="highlight-box">
+            <strong>What happens at checkpoint:</strong>
+            <ol>
+                <li>Framework saves to storage: "Called agent1_activity with input"</li>
+                <li>Orchestrator <strong>SHUTS DOWN</strong> completely</li>
+                <li>Memory is freed (function no longer running)</li>
+                <li>Agent1 activity runs separately</li>
+            </ol>
+        </div>
+
+        <h3>Run 2: After Agent1 Completes</h3>
+
+<pre><code># Orchestrator wakes up and REPLAYS from the beginning...
+claim_id = input.get("claim_id")                              # ✅ Executes again
+agent1_result = yield call_activity("agent1_activity", input)
+# ↑ Framework checks history: "agent1_activity already done!"
+# ↑ Returns cached result immediately (no actual API call)   ← REPLAY
+
+approval = yield wait_for_external_event("ApprovalDecision")  # ⏸️ CHECKPOINT</code></pre>
+
+        <div class="warning-box">
+            <strong>What happens:</strong>
+            <ol>
+                <li>Framework saves: "Waiting for ApprovalDecision event"</li>
+                <li>Orchestrator <strong>SHUTS DOWN</strong> again</li>
+                <li>Waits hours/days for human to approve...</li>
+                <li><strong>No cost while waiting</strong> (function not running)</li>
+            </ol>
+        </div>
+
+        <h3>Run 3: After Human Approves</h3>
+
+<pre><code># Orchestrator wakes up and REPLAYS again...
+claim_id = input.get("claim_id")                              # ✅ Executes
+agent1_result = yield call_activity("agent1_activity", input) # ⏩ REPLAY (from history)
+approval = yield wait_for_external_event("ApprovalDecision")  # ⏩ REPLAY (from history)
+
+# NOW continues with NEW execution...
+agent2_result = yield call_activity("agent2_activity", data)  # ✅ NEW EXECUTION
+agent3_result = yield call_activity("agent3_activity", data)  # ✅ NEW EXECUTION
+email_result = yield call_activity("send_email_activity", data) # ✅ NEW EXECUTION</code></pre>
+
+        <!-- SECTION: Timeline -->
+        <h2 id="timeline">Visual Timeline</h2>
+
+        <div class="diagram">
+TIME ──────────────────────────────────────────────────────────────────────────────────────►
+
+     ┌──────────────┐
+     │ Service Bus  │
+     │ or HTTP POST │
+     └──────┬───────┘
+            │
+            ▼
+    ┌───────────────┐     ┌─────────────────────┐
+    │ Agent1        │────►│ CHECKPOINT          │
+    │ (Classifier)  │     │ Orchestrator dies   │
+    └───────────────┘     └──────────┬──────────┘
+                                     │
+                         (Agent1 calls Azure AI Foundry)
+                                     │
+                                     ▼
+                         ┌─────────────────────┐
+                         │ Agent1 completes    │
+                         └──────────┬──────────┘
+                                    │
+          ┌─────────────────────────┘
+          │
+          ▼
+    ┌───────────────┐     ┌─────────────────────┐
+    │ REPLAY Agent1 │     │ Wait for human      │
+    │ (from cache)  │────►│ CHECKPOINT          │
+    │               │     │ Orchestrator dies   │
+    └───────────────┘     └──────────┬──────────┘
+                                     │
+                         (Hours or days pass...)
+                         (Human submits estimate via UI)
+                                     │
+                                     ▼
+                         ┌─────────────────────┐
+                         │ Human approves      │
+                         │ POST /approve/{id}  │
+                         └──────────┬──────────┘
+                                    │
+          ┌─────────────────────────┘
+          │
+          ▼
+    ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+    │ REPLAY Agent1 │────►│ REPLAY        │────►│ Agent2        │
+    │ (from cache)  │     │ approval      │     │ (Adjudicator) │
+    └───────────────┘     └───────────────┘     └───────┬───────┘
+                                                        │
+                                                        ▼ CHECKPOINT
+                                                        │
+    ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+    │ REPLAY all    │────►│ Agent3        │────►│ Send Email    │
+    │ previous      │     │ (Email        │     │ (Gmail SMTP)  │
+    │               │     │  Composer)    │     │               │
+    └───────────────┘     └───────────────┘     └───────┬───────┘
+                                                        │
+                                                        ▼
+                                                ┌───────────────┐
+                                                │   COMPLETE    │
+                                                │ Return result │
+                                                └───────────────┘
+</div>
+
+        <!-- SECTION: Why Replay -->
+        <h2 id="why-replay">Why Replay Instead of Storing Variables?</h2>
+
+        <p>You might think: "Why not just save variables to a database?"</p>
+
+        <table>
+            <tr>
+                <th>Approach</th>
+                <th>Complexity</th>
+            </tr>
+            <tr>
+                <td><strong>Manual state management</strong></td>
+                <td>You'd have to save/restore every variable, handle partial failures, manage serialization, etc.</td>
+            </tr>
+            <tr>
+                <td><strong>Replay pattern</strong></td>
+                <td>Framework rebuilds state automatically by re-executing your code</td>
+            </tr>
+        </table>
+
+        <div class="success-box">
+            <strong>Replay is simpler because:</strong>
+            <ul>
+                <li>Your code is the "source of truth"</li>
+                <li>No manual serialization needed</li>
+                <li>Handles complex branching automatically</li>
+                <li>Framework manages all the storage</li>
+            </ul>
+        </div>
+
+        <!-- SECTION: is_replaying -->
+        <h2 id="is-replaying">The <code>is_replaying</code> Flag</h2>
+
+        <p>During replay, you don't want duplicate side effects (logs, notifications, etc.):</p>
+
+<pre><code># BAD - logs every time orchestrator replays
+logger.info(f"Agent1 completed with result: {result}")
+
+# GOOD - only logs on actual execution
+if not context.is_replaying:
+    logger.info(f"Agent1 completed with result: {result}")</code></pre>
+
+        <table>
+            <tr>
+                <th>Action</th>
+                <th>Check is_replaying?</th>
+                <th>Why</th>
+            </tr>
+            <tr>
+                <td>Logging</td>
+                <td>✅ Yes</td>
+                <td>Avoid duplicate log entries</td>
+            </tr>
+            <tr>
+                <td>Sending notifications</td>
+                <td>✅ Yes</td>
+                <td>Avoid duplicate emails/SMS</td>
+            </tr>
+            <tr>
+                <td>Calling activities</td>
+                <td>❌ No</td>
+                <td>Framework handles this automatically</td>
+            </tr>
+            <tr>
+                <td>Setting custom status</td>
+                <td>❌ No</td>
+                <td>Framework handles this</td>
+            </tr>
+        </table>
+
+        <!-- SECTION: Determinism -->
+        <h2 id="determinism">Determinism Rules</h2>
+
+        <p>Because orchestrators replay, they must be <strong>deterministic</strong> (same input = same output):</p>
+
+        <h3>❌ DON'T Do This</h3>
+<pre><code># BAD - different result on each replay!
+random_id = random.randint(1, 1000)
+current_time = datetime.now()
+guid = uuid.uuid4()</code></pre>
+
+        <h3>✅ DO This Instead</h3>
+<pre><code># GOOD - use deterministic alternatives
+random_id = context.new_guid()              # Deterministic GUID
+current_time = context.current_utc_datetime # Replay-safe time</code></pre>
+
+        <!-- SECTION: Async HTTP Pattern (moved to bottom) -->
+        <h2 id="async-pattern">Async HTTP Pattern (202 Accepted + Polling)</h2>
+
+        <p>Durable Functions use the <strong>Async HTTP Pattern</strong> for long-running operations:</p>
+
+        <div class="diagram">
+┌──────────┐                              ┌─────────────────────┐
+│  CLIENT  │                              │  DURABLE FUNCTION   │
+└────┬─────┘                              └──────────┬──────────┘
+     │                                               │
+     │  POST /api/claims/start                       │
+     │  {claim_id, email_content, ...}               │
+     ├──────────────────────────────────────────────►│
+     │                                               │
+     │                                    Starts orchestration
+     │                                    Returns immediately
+     │                                               │
+     │  <span class="status-202">202 Accepted</span>                                  │
+     │  {                                            │
+     │    "instance_id": "claim-123",                │
+     │    "status_url": "/api/claims/status/123",    │
+     │    "approval_url": "/api/claims/approve/123"  │
+     │  }                                            │
+     │◄──────────────────────────────────────────────┤
+     │                                               │
+     │                                               │
+     │  GET /api/claims/status/123  (POLLING)        │
+     ├──────────────────────────────────────────────►│
+     │                                               │
+     │  <span class="status-200">200 OK</span> {"runtime_status": "Running",         │
+     │         "custom_status": {"step": "agent1"}}  │
+     │◄──────────────────────────────────────────────┤
+     │                                               │
+     │         ... time passes ...                   │
+     │                                               │
+     │  GET /api/claims/status/123  (POLLING)        │
+     ├──────────────────────────────────────────────►│
+     │                                               │
+     │  <span class="status-200">200 OK</span> {"runtime_status": "Completed",       │
+     │         "output": {result...}}                │
+     │◄──────────────────────────────────────────────┤
+     │                                               │
+</div>
+
+        <h3>Why 202 Accepted?</h3>
+
+        <table>
+            <tr>
+                <th>Status Code</th>
+                <th>Meaning</th>
+                <th>Use Case</th>
+            </tr>
+            <tr>
+                <td><span class="status-200">200 OK</span></td>
+                <td>Request completed successfully</td>
+                <td>Synchronous operations</td>
+            </tr>
+            <tr>
+                <td><span class="status-202">202 Accepted</span></td>
+                <td>Request accepted, processing started</td>
+                <td>Long-running async operations</td>
+            </tr>
+        </table>
+
+        <div class="highlight-box">
+            <strong>Key Insight:</strong> The client doesn't wait for the workflow to complete. It receives a <code>status_url</code> and can poll it periodically to check progress.
+        </div>
+
+        <h3>Response from Starting Orchestration</h3>
+
+<pre><code>// POST /api/claims/start returns:
+{
+    "instance_id": "claim-CLM-2026-00142",
+    "claim_id": "CLM-2026-00142",
+    "status": "Started",
+    "status_url": "http://localhost:7071/api/claims/status/claim-CLM-2026-00142",
+    "approval_url": "http://localhost:7071/api/claims/approve/claim-CLM-2026-00142"
+}</code></pre>
+
+        <h3>Polling the Status URL</h3>
+
+<pre><code>// GET /api/claims/status/{instance_id} returns:
+{
+    "instance_id": "claim-CLM-2026-00142",
+    "runtime_status": "Running",          // or "Completed", "Failed"
+    "custom_status": {
+        "step": "awaiting_approval",
+        "claim_id": "CLM-2026-00142",
+        "message": "Waiting for manual estimate..."
+    },
+    "created_time": "2026-02-02T12:00:00Z",
+    "last_updated_time": "2026-02-02T12:01:30Z",
+    "output": null                        // populated when completed
+}</code></pre>
+
+        <!-- SECTION: Summary -->
+        <h2 id="summary">Summary</h2>
+
+        <table>
+            <tr>
+                <th>Question</th>
+                <th>Answer</th>
+            </tr>
+            <tr>
+                <td>How does client interact?</td>
+                <td><strong>Async pattern:</strong> POST → 202 Accepted → Poll status URL</td>
+            </tr>
+            <tr>
+                <td>How is state stored?</td>
+                <td><strong>Automatically</strong> by Durable Task Framework</td>
+            </tr>
+            <tr>
+                <td>Where is it stored?</td>
+                <td><strong>Azure Storage</strong> (Tables + Queues + Blobs)</td>
+            </tr>
+            <tr>
+                <td>Why replay?</td>
+                <td>To <strong>rebuild memory state</strong> after function restarts</td>
+            </tr>
+            <tr>
+                <td>Is replay expensive?</td>
+                <td><strong>No</strong> - completed steps return cached results</td>
+            </tr>
+            <tr>
+                <td>Do I manage storage?</td>
+                <td><strong>No</strong> - it's built-in and automatic</td>
+            </tr>
+            <tr>
+                <td>Local development?</td>
+                <td>Uses <strong>Azurite</strong> emulator in Docker</td>
+            </tr>
+        </table>
+
+        <blockquote>
+            <strong>Key Takeaway:</strong> Durable Functions trade compute time for storage. Instead of keeping a function running for hours (expensive), they checkpoint progress to storage (cheap) and replay when needed. Your code is the recipe; the history is the memory.
+        </blockquote>
+
+        <h2>References</h2>
+        <ul>
+            <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-overview" target="_blank">Durable Functions Overview</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-code-constraints" target="_blank">Orchestrator Code Constraints</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-http-api" target="_blank">HTTP API Reference</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-orchestrations#reliability" target="_blank">Checkpointing and Replay</a></li>
+        </ul>
+
+        <hr style="margin-top: 40px;">
+        <p style="color: #666; text-align: center;">
+            Generated for DURFUNC Project | Azure Durable Functions HITL Orchestration
+        </p>
+    </div>
+</body>
+</html>

@@ -17,6 +17,7 @@ from activities.agent1_activity import run_agent1_activity
 from activities.notify_activity import run_notify_activity
 from activities.agent2_activity import run_agent2_activity
 from activities.agent3_activity import run_agent3_activity
+from activities.send_email_activity import run_send_email_activity
 from shared.models import ClaimRequest, Agent1Output, ApprovalDecision
 
 # Initialize the Durable Functions app
@@ -783,6 +784,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     agent2_output = None
     agent3_input = None
     agent3_output = None
+    send_email_result = None
 
     if winner == timeout_task:
         # Timeout occurred
@@ -895,13 +897,52 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
                     logger.warning(f"[{instance_id}] Agent3 failed - {agent3_activity_result.get('error')}")
 
             stage_timestamps["email_composer_completed"] = context.current_utc_datetime.isoformat()
+
+            # =========================================================================
+            # Step 7: Send Email via SMTP
+            # =========================================================================
+            send_email_result = None
+            if agent3_output:
+                stage_timestamps["email_sending_started"] = context.current_utc_datetime.isoformat()
+                context.set_custom_status({
+                    "step": "sending_email",
+                    "claim_id": claim_id,
+                    "decision": agent2_output.get("decision"),
+                    "message": "Sending notification email...",
+                    "stage_timestamps": stage_timestamps
+                })
+
+                # Prepare send email input
+                send_email_input = {
+                    "claim_id": claim_id,
+                    "email_subject": agent3_output.get("email_subject"),
+                    "email_body": agent3_output.get("email_body"),
+                    "recipient_email": agent3_output.get("recipient_email"),
+                    "recipient_name": agent3_output.get("recipient_name"),
+                    "send_to_review": True,  # Send to review email for approval
+                    "send_to_claimant": False,  # Don't send directly to claimant yet
+                    "_instance_id": instance_id
+                }
+
+                # Call Send Email Activity
+                send_email_result = yield context.call_activity("send_email_activity", send_email_input)
+
+                if not context.is_replaying:
+                    if send_email_result.get("success"):
+                        logger.info(f"[{instance_id}] Email sent successfully to review address")
+                    else:
+                        logger.warning(f"[{instance_id}] Email sending failed: {send_email_result.get('errors')}")
+
+                stage_timestamps["email_sending_completed"] = context.current_utc_datetime.isoformat()
+
             stage_timestamps["completed"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
                 "step": "completed",
                 "claim_id": claim_id,
                 "decision": agent2_output.get("decision"),
                 "approved_amount": agent2_output.get("approved_amount"),
-                "email_sent": agent3_output is not None,
+                "email_composed": agent3_output is not None,
+                "email_sent": send_email_result.get("review_email_sent") if send_email_result else False,
                 "message": "Processing complete",
                 "stage_timestamps": stage_timestamps
             })
@@ -920,6 +961,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
         "agent2_output": agent2_output,
         "agent3_input": agent3_input,
         "agent3_output": agent3_output,
+        "email_send_result": send_email_result,
         "stage_timestamps": stage_timestamps,
         "error_message": None,
         "started_at": started_at,
@@ -999,3 +1041,20 @@ def agent3_activity(activityInput: dict) -> dict:
         Dictionary with Agent3 output data (composed email)
     """
     return run_agent3_activity(activityInput)
+
+
+@app.activity_trigger(input_name="activityInput")
+def send_email_activity(activityInput: dict) -> dict:
+    """
+    Activity function wrapper for sending emails via SMTP.
+
+    This wrapper is registered with Durable Functions and delegates
+    to the actual implementation in activities/send_email_activity.py.
+
+    Args:
+        activityInput: Dictionary with email data (subject, body, recipient)
+
+    Returns:
+        Dictionary with email send status
+    """
+    return run_send_email_activity(activityInput)

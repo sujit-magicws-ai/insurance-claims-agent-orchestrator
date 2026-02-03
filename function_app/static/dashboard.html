@@ -267,12 +267,15 @@
         <!-- New Claim Form -->
         <div class="card mb-4 new-claim-form">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">New Claim Submission</h5>
+                <div>
+                    <h5 class="mb-0 d-inline">New Claim Submission</h5>
+                    <small class="text-muted ms-2">(Manual entry - claims also arrive via Service Bus)</small>
+                </div>
                 <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleNewClaimForm()">
-                    <span id="toggleIcon">-</span>
+                    <span id="toggleIcon">+</span> <span class="ms-1">Expand</span>
                 </button>
             </div>
-            <div class="card-body" id="newClaimForm">
+            <div class="card-body collapsed" id="newClaimForm">
                 <form id="claimForm" onsubmit="submitClaim(event)">
                     <div class="row">
                         <div class="col-md-6">
@@ -469,12 +472,15 @@
         function toggleNewClaimForm() {
             const form = document.getElementById('newClaimForm');
             const icon = document.getElementById('toggleIcon');
+            const btn = icon.parentElement;
             if (form.classList.contains('collapsed')) {
                 form.classList.remove('collapsed');
                 icon.textContent = '-';
+                btn.innerHTML = '<span id="toggleIcon">-</span> <span class="ms-1">Collapse</span>';
             } else {
                 form.classList.add('collapsed');
                 icon.textContent = '+';
+                btn.innerHTML = '<span id="toggleIcon">+</span> <span class="ms-1">Expand</span>';
             }
         }
 
@@ -1133,6 +1139,7 @@
                 { id: 'awaiting', label: 'Awaiting Manual Estimate', timeKey: 'awaiting_started' },
                 { id: 'agent2', label: 'Claim Adjudicator Agent', timeKey: 'adjudicator_completed' },
                 { id: 'agent3', label: 'Email Composer Agent', timeKey: 'email_composer_completed' },
+                { id: 'email_sent', label: 'Email Sent', timeKey: 'email_sending_completed' },
                 { id: 'complete', label: 'Completed', timeKey: 'completed' }
             ];
 
@@ -1143,6 +1150,7 @@
                 awaiting: 'pending',
                 agent2: 'pending',
                 agent3: 'pending',
+                email_sent: 'pending',
                 complete: 'pending'
             };
 
@@ -1160,11 +1168,18 @@
                 stageStatus.awaiting = 'completed';
                 stageStatus.agent2 = 'completed';
                 stageStatus.agent3 = 'active';
+            } else if (step === 'sending_email') {
+                stageStatus.agent1 = 'completed';
+                stageStatus.awaiting = 'completed';
+                stageStatus.agent2 = 'completed';
+                stageStatus.agent3 = 'completed';
+                stageStatus.email_sent = 'active';
             } else if (step === 'completed' || step === 'agent2_completed' || step === 'rejected' || step === 'timeout') {
                 stageStatus.agent1 = 'completed';
                 stageStatus.awaiting = 'completed';
                 stageStatus.agent2 = 'completed';
                 stageStatus.agent3 = 'completed';
+                stageStatus.email_sent = 'completed';
                 stageStatus.complete = 'completed';
             }
 
