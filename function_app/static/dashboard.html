@@ -461,11 +461,16 @@
         let isLoading = false;
         const AUTO_REFRESH_SECONDS = 5;
 
-        // Generate a claim ID if not provided
+        // Generate a claim ID if not provided (CHT = Claim HTTP Trigger)
         function generateClaimId() {
-            const year = new Date().getFullYear();
-            const random = Math.floor(Math.random() * 90000) + 10000;
-            return `CLM-${year}-${random}`;
+            const now = new Date();
+            const timestamp = now.getFullYear().toString() +
+                String(now.getMonth() + 1).padStart(2, '0') +
+                String(now.getDate()).padStart(2, '0') +
+                String(now.getHours()).padStart(2, '0') +
+                String(now.getMinutes()).padStart(2, '0') +
+                String(now.getSeconds()).padStart(2, '0');
+            return `CHT-${timestamp}`;
         }
 
         // Toggle new claim form visibility

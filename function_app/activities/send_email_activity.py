@@ -159,19 +159,10 @@ def run_send_email_activity(input_data: dict) -> dict:
                 # Add claim context to subject for review emails
                 review_subject = f"[REVIEW] {email_subject} - Claim {claim_id}"
 
-                # Add header to body for review context
-                review_body = f"""=== CLAIM REVIEW EMAIL ===
-Claim ID: {claim_id}
-Original Recipient: {recipient_name} <{recipient_email}>
-This email is for review before sending to the claimant.
-================================
-
-{email_body}
-"""
                 result = send_email_smtp(
                     to_email=review_email,
                     subject=review_subject,
-                    body=review_body,
+                    body=email_body,
                     reply_to=recipient_email
                 )
                 results["review_email_sent"] = True

@@ -15,7 +15,7 @@ from typing import Optional
 from urllib.parse import urlparse, quote, urlunparse
 
 from .models import Agent1Input, Agent1Output, Agent2Output, Agent3Input, Agent3Output
-from .prompts import build_agent1_prompt, build_agent2_prompt, build_agent3_prompt
+from .prompts import build_agent1_prompt, build_agent2_prompt, build_agent3_prompt, get_full_signature
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +239,8 @@ def _get_mock_agent3_response(input_data: Agent3Input) -> dict:
     Returns:
         Mock response dictionary matching Agent3Output schema
     """
+    signature = get_full_signature()  # Random persona
+
     return {
         "claim_id": input_data.claim_id,
         "email_subject": f"Your Claim {input_data.claim_id} - {input_data.email_purpose}",
@@ -251,7 +253,8 @@ def _get_mock_agent3_response(input_data: Agent3Input) -> dict:
 If you have any questions regarding your claim, please don't hesitate to contact our claims department.
 
 Best regards,
-{input_data.config.persona}
+
+{signature}
 
 ---
 Claim Reference: {input_data.claim_id}
@@ -736,7 +739,7 @@ def invoke_email_composer(
             recipient_email=input_data.recipient_email,
             email_purpose=input_data.email_purpose,
             outcome_summary=input_data.outcome_summary,
-            persona=input_data.config.persona,
+            persona_name=None,  # Randomly picked from persona list
             additional_context=input_data.additional_context or "",
             tone=input_data.config.tone,
             length=input_data.config.length,

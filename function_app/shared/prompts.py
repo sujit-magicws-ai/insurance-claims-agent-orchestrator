@@ -5,6 +5,48 @@ These templates are used to construct the plain English prompts
 sent to the agents. Data is injected into the templates at runtime.
 """
 
+import random
+
+# =============================================================================
+# Agent3 Persona Names and Signature
+# =============================================================================
+
+AGENT3_PERSONA_NAMES = [
+    "Sarah Mitchell",
+    "Michael Thompson",
+    "Jennifer Rodriguez",
+    "David Chen",
+    "Amanda Foster",
+    "Robert Williams",
+    "Michelle Davis",
+    "Christopher Martinez"
+]
+
+AGENT3_SIGNATURE_TEMPLATE = """{persona_name}
+Claims Department, JM&A Group
+Fidelity Warranty Services, Inc.
+500 Jim Moran Boulevard, Deerfield Beach, FL 33442
+Toll Free: 1-800-327-5172 | Fax: 954-429-2699"""
+
+
+def get_random_persona() -> str:
+    """Get a random persona name from the list."""
+    return random.choice(AGENT3_PERSONA_NAMES)
+
+
+def get_full_signature(persona_name: str = None) -> str:
+    """Get the full email signature with persona name.
+
+    Args:
+        persona_name: Optional specific name. If None, picks randomly.
+
+    Returns:
+        Formatted signature block
+    """
+    if persona_name is None:
+        persona_name = get_random_persona()
+    return AGENT3_SIGNATURE_TEMPLATE.format(persona_name=persona_name)
+
 # =============================================================================
 # Agent1 Prompt (Claim Classification)
 # =============================================================================
@@ -244,9 +286,6 @@ AGENT3_USER_PROMPT_TEMPLATE = """Compose an email with the following details:
 **OUTCOME SUMMARY:**
 {outcome_summary}
 
-**SENDER/PERSONA:**
-{persona}
-
 **ADDITIONAL CONTEXT:**
 {additional_context}
 
@@ -257,6 +296,9 @@ AGENT3_USER_PROMPT_TEMPLATE = """Compose an email with the following details:
 - Call to Action: {call_to_action}
 - Template: {template}
 
+**EMAIL SIGNATURE (use exactly as provided):**
+{signature}
+
 ---
 
 **Instructions:**
@@ -265,7 +307,7 @@ AGENT3_USER_PROMPT_TEMPLATE = """Compose an email with the following details:
 3. Adjust length based on setting (brief: 2-3 paragraphs, standard: 4-5 paragraphs, detailed: 6+ paragraphs)
 4. Apply the empathy level appropriately
 5. Include call-to-action based on setting (none: no CTA, soft: suggest next steps, direct: clear action required)
-6. Sign the email with the persona name
+6. IMPORTANT: End the email with the exact signature block provided above (including company details)
 7. Include claim reference number if available in the context
 
 ---
@@ -274,7 +316,7 @@ Please provide your response as a JSON with the following structure:
 {{
     "claim_id": "{claim_id}",
     "email_subject": "Clear, concise subject line",
-    "email_body": "The complete email body with proper formatting and line breaks",
+    "email_body": "The complete email body with proper formatting, line breaks, and the full signature block",
     "recipient_name": "{recipient_name}",
     "recipient_email": "{recipient_email}"
 }}
@@ -336,7 +378,7 @@ def build_agent3_prompt(
     recipient_email: str,
     email_purpose: str,
     outcome_summary: str,
-    persona: str = "Claims Department",
+    persona_name: str = None,
     additional_context: str = "",
     tone: str = "formal",
     length: str = "standard",
@@ -352,7 +394,7 @@ def build_agent3_prompt(
         recipient_email: Recipient's email address
         email_purpose: Purpose of the email
         outcome_summary: Summary of the outcome to communicate
-        persona: Name in email signature
+        persona_name: Name for signature (if None, picks randomly)
         additional_context: Additional context for the email
         tone: Email tone (formal/casual/urgent)
         length: Email length (brief/standard/detailed)
@@ -363,13 +405,16 @@ def build_agent3_prompt(
     Returns:
         Formatted prompt string for Agent3
     """
+    # Get full signature with persona name (random if not specified)
+    signature = get_full_signature(persona_name)
+
     return AGENT3_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         recipient_name=recipient_name,
         recipient_email=recipient_email,
         email_purpose=email_purpose,
         outcome_summary=outcome_summary,
-        persona=persona,
+        signature=signature,
         additional_context=additional_context or "None provided",
         tone=tone,
         length=length,

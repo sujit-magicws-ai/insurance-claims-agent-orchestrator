@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 from activities.agent1_activity import run_agent1_activity
@@ -27,6 +28,64 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 APPROVAL_TIMEOUT_HOURS = float(os.getenv("APPROVAL_TIMEOUT_HOURS", "24"))
+
+
+def transform_servicebus_message(raw_message: dict) -> dict:
+    """
+    Transform incoming Service Bus message format to Agent 1 expected format.
+
+    Incoming format (from email monitoring):
+        {
+            "message_id": "<PN3PPFDAF398764...>",
+            "from": "Sujit Sarkar <sujit_s@pursuitsoftware.com>",
+            "body_text": "Hi\r\nPls review my service claim...",
+            "body_html": "...",
+            "attachments": [{"filename": "...", "blob_url": "..."}]
+        }
+
+    Target format (for Agent 1):
+        {
+            "claim_id": "CLM-SB-20260203143000",
+            "sender_email": "sujit_s@pursuitsoftware.com",
+            "email_content": "Hi\r\nPls review my service claim...",
+            "attachment_url": "https://..."
+        }
+    """
+    # Generate a short claim_id using timestamp (CSB = Claim Service Bus)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    claim_id = f"CSB-{timestamp}"
+
+    # Extract email from "Name <email>" format
+    from_field = raw_message.get("from", "")
+    email_match = re.search(r'<([^>]+)>', from_field)
+    if email_match:
+        sender_email = email_match.group(1)
+    else:
+        # Fallback: use the whole field if no angle brackets
+        sender_email = from_field.strip()
+
+    # Get first attachment URL (if any)
+    attachments = raw_message.get("attachments", [])
+    attachment_url = ""
+    if attachments and len(attachments) > 0:
+        attachment_url = attachments[0].get("blob_url", "")
+
+    # Build transformed message
+    transformed = {
+        "claim_id": claim_id,
+        "sender_email": sender_email,
+        "email_content": raw_message.get("body_text", ""),
+        "attachment_url": attachment_url
+    }
+
+    return transformed
+
+
+def is_raw_email_format(message: dict) -> bool:
+    """Check if message is in raw email format (from email monitoring) vs expected format."""
+    # Raw email format has 'from' and 'body_text' fields
+    # Expected format has 'claim_id' and 'email_content' fields
+    return "from" in message and "body_text" in message
 
 
 # =============================================================================
@@ -584,15 +643,26 @@ async def servicebus_claim_trigger(message: func.ServiceBusMessage, client) -> N
     """
     Service Bus trigger to start a new claim orchestration from queue message.
 
-    Expected Message Format (JSON):
+    Supports two message formats:
+
+    1. Raw Email Format (from email monitoring service):
+        {
+            "message_id": "<PN3PPFDAF398764...>",
+            "from": "Sujit Sarkar <sujit_s@pursuitsoftware.com>",
+            "body_text": "Hi, Pls review my service claim...",
+            "body_html": "...",
+            "attachments": [{"filename": "...", "blob_url": "https://..."}]
+        }
+
+    2. Direct Format (pre-formatted):
         {
             "claim_id": "CLM-2026-00199",
             "email_content": "Subject: Claim Request\n\nDear Claims Team...",
             "attachment_url": "https://storage.blob.core.windows.net/claims/form.pdf",
-            "sender_email": "claimant@email.com",
-            "metadata": {}  // optional
+            "sender_email": "claimant@email.com"
         }
 
+    Raw email format is auto-detected and transformed to direct format.
     The message will be processed and the orchestration started.
     If the orchestration already exists and is running, the message is logged and skipped.
     """
@@ -609,6 +679,12 @@ async def servicebus_claim_trigger(message: func.ServiceBusMessage, client) -> N
             logger.error(f"Message body: {message_body[:500]}")
             # Message will be dead-lettered after max delivery attempts
             raise
+
+        # Transform if in raw email format (from email monitoring)
+        if is_raw_email_format(body):
+            logger.info("Detected raw email format, transforming to Agent 1 format...")
+            body = transform_servicebus_message(body)
+            logger.info(f"Transformed message: claim_id={body.get('claim_id')}, sender={body.get('sender_email')}")
 
         # Validate required fields
         required_fields = ["claim_id", "email_content", "attachment_url", "sender_email"]
