@@ -1,4 +1,51 @@
+"""
+Prompt templates for Azure AI Foundry agents.
 
+These templates are used to construct the plain English prompts
+sent to the agents. Data is injected into the templates at runtime.
+"""
+
+import random
+
+# =============================================================================
+# Agent3 Persona Names and Signature
+# =============================================================================
+
+AGENT3_PERSONA_NAMES = [
+    "Sarah Mitchell",
+    "Michael Thompson",
+    "Jennifer Rodriguez",
+    "David Chen",
+    "Amanda Foster",
+    "Robert Williams",
+    "Michelle Davis",
+    "Christopher Martinez"
+]
+
+AGENT3_SIGNATURE_TEMPLATE = """{persona_name}
+Claims Department, JM&A Group
+Fidelity Warranty Services, Inc.
+500 Jim Moran Boulevard, Deerfield Beach, FL 33442
+Toll Free: 1-800-327-5172 | Fax: 954-429-2699"""
+
+
+def get_random_persona() -> str:
+    """Get a random persona name from the list."""
+    return random.choice(AGENT3_PERSONA_NAMES)
+
+
+def get_full_signature(persona_name: str = None) -> str:
+    """Get the full email signature with persona name.
+
+    Args:
+        persona_name: Optional specific name. If None, picks randomly.
+
+    Returns:
+        Formatted signature block
+    """
+    if persona_name is None:
+        persona_name = get_random_persona()
+    return AGENT3_SIGNATURE_TEMPLATE.format(persona_name=persona_name)
 
 # =============================================================================
 # Agent1 Prompt (Claim Classification)
@@ -276,3 +323,102 @@ Please provide your response as a JSON with the following structure:
 
 Respond ONLY with the JSON, no additional text."""
 
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+def build_agent1_prompt(
+    claim_id: str,
+    email_content: str,
+    attachment_url: str,
+    sender_email: str,
+    received_date: str
+) -> str:
+    """Build the complete prompt for Agent1.
+
+    Args:
+        claim_id: Unique claim identifier
+        email_content: The email content from the claimant
+        attachment_url: URL to the attachment
+        sender_email: Sender's email address
+        received_date: When the email was received
+
+    Returns:
+        Formatted prompt string for Agent1
+    """
+    return AGENT1_USER_PROMPT_TEMPLATE.format(
+        claim_id=claim_id,
+        email_content=email_content,
+        attachment_url=attachment_url,
+        sender_email=sender_email,
+        received_date=received_date
+    )
+
+
+def build_agent2_prompt(claim_id: str, claim_data_json: str) -> str:
+    """Build the complete prompt for Agent2.
+
+    Args:
+        claim_id: Unique claim identifier
+        claim_data_json: The structured claim data as a JSON string
+
+    Returns:
+        Formatted prompt string for Agent2
+    """
+    return AGENT2_USER_PROMPT_TEMPLATE.format(
+        claim_id=claim_id,
+        claim_data_json=claim_data_json
+    )
+
+
+def build_agent3_prompt(
+    claim_id: str,
+    recipient_name: str,
+    recipient_email: str,
+    email_purpose: str,
+    outcome_summary: str,
+    persona_name: str = None,
+    additional_context: str = "",
+    tone: str = "formal",
+    length: str = "standard",
+    empathy: str = "warm",
+    call_to_action: str = "soft",
+    template: str = "default"
+) -> str:
+    """Build the complete prompt for Agent3 (Email Composer).
+
+    Args:
+        claim_id: Unique claim identifier
+        recipient_name: Recipient's name
+        recipient_email: Recipient's email address
+        email_purpose: Purpose of the email
+        outcome_summary: Summary of the outcome to communicate
+        persona_name: Name for signature (if None, picks randomly)
+        additional_context: Additional context for the email
+        tone: Email tone (formal/casual/urgent)
+        length: Email length (brief/standard/detailed)
+        empathy: Empathy level (neutral/warm/highly_supportive)
+        call_to_action: CTA style (none/soft/direct)
+        template: Predefined template name
+
+    Returns:
+        Formatted prompt string for Agent3
+    """
+    # Get full signature with persona name (random if not specified)
+    signature = get_full_signature(persona_name)
+
+    return AGENT3_USER_PROMPT_TEMPLATE.format(
+        claim_id=claim_id,
+        recipient_name=recipient_name,
+        recipient_email=recipient_email,
+        email_purpose=email_purpose,
+        outcome_summary=outcome_summary,
+        signature=signature,
+        additional_context=additional_context or "None provided",
+        tone=tone,
+        length=length,
+        empathy=empathy,
+        call_to_action=call_to_action,
+        template=template or "default"
+    )

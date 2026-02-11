@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Composer Agent - Universal Communication Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+
+        .header-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .header-card h1 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header-card .subtitle {
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+
+        .scenario-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .form-card.active {
+            display: block;
+        }
+
+        .section-header {
+            font-weight: 600;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            margin-top: 25px;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        .scenario-btn {
+            display: block;
+            width: 100%;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background: white;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scenario-btn:hover {
+            border-color: var(--secondary-color);
+            background: #f0f7ff;
+        }
+
+        .scenario-btn.selected {
+            border-color: var(--secondary-color);
+            background: #e3f2fd;
+        }
+
+        .scenario-btn .scenario-title {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .scenario-btn .scenario-desc {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .style-option {
+            display: inline-block;
+            margin-right: 15px;
+        }
+
+        .style-option input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-clear {
+            background: #6c757d;
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .preview-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .preview-card.active {
+            display: block;
+        }
+
+        .email-preview {
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Georgia', serif;
+        }
+
+        .email-header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .email-header-row {
+            margin-bottom: 5px;
+        }
+
+        .email-header-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            width: 80px;
+            display: inline-block;
+        }
+
+        .email-body {
+            white-space: pre-line;
+            line-height: 1.8;
+        }
+
+        .email-signature {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+            color: #555;
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn-action {
+            margin: 0 10px;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .checkbox-group .form-check {
+            margin-right: 20px;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading-spinner.active {
+            display: block;
+        }
+
+        .badge-scenario {
+            background: var(--secondary-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .back-btn:hover {
+            text-decoration: underline;
+        }
+
+        .persona-badge {
+            background: #e8f4f8;
+            color: var(--primary-color);
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header-card">
+            <h1>Email Composer Agent</h1>
+            <p class="subtitle">Universal Communication Hub - One Agent, Multiple Business Scenarios</p>
+        </div>
+
+        <!-- Step 1: Scenario Selection -->
+        <div class="scenario-card" id="scenarioSelection">
+            <h4 class="section-header">Select Email Scenario</h4>
+
+            <button class="scenario-btn" data-scenario="claims">
+                <div class="scenario-title">Claims - Approval Notification</div>
+                <div class="scenario-desc">Notify claimant that their vehicle service contract claim has been approved</div>
+            </button>
+
+            <button class="scenario-btn" data-scenario="collections">
+                <div class="scenario-title">Collections - Overdue Notice</div>
+                <div class="scenario-desc">Notify customer about overdue payment with suspension warning</div>
+            </button>
+
+            <button class="scenario-btn" data-scenario="dealer">
+                <div class="scenario-title">Dealer Sales - Proposal Follow-up</div>
+                <div class="scenario-desc">Follow up with dealership contact after partnership proposal meeting</div>
+            </button>
+
+            <button class="scenario-btn" data-scenario="renewal">
+                <div class="scenario-title">Contract Renewal - Expiration Reminder</div>
+                <div class="scenario-desc">Proactively remind customer about expiring contract with renewal offer</div>
+            </button>
+        </div>
+
+        <!-- Step 2: Form for Claims -->
+        <div class="form-card" id="form-claims">
+            <button class="back-btn" onclick="showScenarioSelection()">&larr; Back to Scenarios</button>
+            <span class="badge-scenario">Claims - Approval Notification</span>
+
+            <h4 class="section-header">Common Parameters</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reference ID</label>
+                    <input type="text" class="form-control" id="claims-refId" value="CLM-2026-00142">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Name</label>
+                    <input type="text" class="form-control" id="claims-recipientName" value="John Smith">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Email</label>
+                    <input type="email" class="form-control" id="claims-recipientEmail" value="john.smith@email.com">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email Purpose</label>
+                    <input type="text" class="form-control" id="claims-emailPurpose" value="Claim Approval Notification">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Outcome Summary</label>
+                    <input type="text" class="form-control" id="claims-outcomeSummary" value="Your vehicle service contract claim has been approved for repair.">
+                </div>
+            </div>
+
+            <h4 class="section-header">Domain Parameters (Claims)</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Claim Type</label>
+                    <select class="form-select" id="claims-claimType">
+                        <option value="VSC - Mechanical" selected>VSC - Mechanical</option>
+                        <option value="VSC - Electrical">VSC - Electrical</option>
+                        <option value="GAP">GAP</option>
+                        <option value="Tire & Wheel">Tire & Wheel</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Vehicle Info</label>
+                    <input type="text" class="form-control" id="claims-vehicleInfo" value="2023 Honda Accord">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">VIN</label>
+                    <input type="text" class="form-control" id="claims-vin" value="1HGCV1F34NA000123">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Repair Facility</label>
+                    <input type="text" class="form-control" id="claims-repairFacility" value="Tampa Auto Service Center">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Diagnosis</label>
+                    <input type="text" class="form-control" id="claims-diagnosis" value="Transmission synchronizer failure">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Repair Estimate</label>
+                    <input type="text" class="form-control" id="claims-estimate" value="$1,850.00">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Approved Amount</label>
+                    <input type="text" class="form-control" id="claims-approvedAmount" value="$1,750.00">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Deductible</label>
+                    <input type="text" class="form-control" id="claims-deductible" value="$100.00">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Additional Context (Optional)</label>
+                    <textarea class="form-control" id="claims-additionalContext" rows="3" placeholder="Enter any additional information to include in the email..."></textarea>
+                </div>
+            </div>
+
+            <h4 class="section-header">Email Style Settings</h4>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Tone</label><br>
+                    <span class="style-option"><input type="radio" name="claims-tone" value="formal" checked> Formal</span>
+                    <span class="style-option"><input type="radio" name="claims-tone" value="casual"> Casual</span>
+                    <span class="style-option"><input type="radio" name="claims-tone" value="urgent"> Urgent</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Length</label><br>
+                    <span class="style-option"><input type="radio" name="claims-length" value="brief"> Brief</span>
+                    <span class="style-option"><input type="radio" name="claims-length" value="standard" checked> Standard</span>
+                    <span class="style-option"><input type="radio" name="claims-length" value="detailed"> Detailed</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Empathy</label><br>
+                    <span class="style-option"><input type="radio" name="claims-empathy" value="neutral"> Neutral</span>
+                    <span class="style-option"><input type="radio" name="claims-empathy" value="warm" checked> Warm</span>
+                    <span class="style-option"><input type="radio" name="claims-empathy" value="highly_supportive"> Highly Supportive</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Call to Action</label><br>
+                    <span class="style-option"><input type="radio" name="claims-cta" value="none"> None</span>
+                    <span class="style-option"><input type="radio" name="claims-cta" value="soft" checked> Soft</span>
+                    <span class="style-option"><input type="radio" name="claims-cta" value="direct"> Direct</span>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-generate me-2" onclick="generateEmail('claims')">Generate Email</button>
+                <button class="btn btn-clear" onclick="clearForm('claims')">Clear Form</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Form for Collections -->
+        <div class="form-card" id="form-collections">
+            <button class="back-btn" onclick="showScenarioSelection()">&larr; Back to Scenarios</button>
+            <span class="badge-scenario">Collections - Overdue Notice</span>
+
+            <h4 class="section-header">Common Parameters</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reference ID</label>
+                    <input type="text" class="form-control" id="collections-refId" value="COL-2026-45210">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Name</label>
+                    <input type="text" class="form-control" id="collections-recipientName" value="Amanda Foster">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Email</label>
+                    <input type="email" class="form-control" id="collections-recipientEmail" value="amanda.foster@email.com">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email Purpose</label>
+                    <input type="text" class="form-control" id="collections-emailPurpose" value="Overdue Payment Notice">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Outcome Summary</label>
+                    <input type="text" class="form-control" id="collections-outcomeSummary" value="Your account is past due and requires immediate attention to avoid coverage suspension.">
+                </div>
+            </div>
+
+            <h4 class="section-header">Domain Parameters (Collections)</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Contract Number</label>
+                    <input type="text" class="form-control" id="collections-contractNumber" value="VSC-2023-45210">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Vehicle Info</label>
+                    <input type="text" class="form-control" id="collections-vehicleInfo" value="2022 Honda Accord">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Amount Overdue</label>
+                    <input type="text" class="form-control" id="collections-amountOverdue" value="$250.00">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Payments Missed</label>
+                    <input type="number" class="form-control" id="collections-paymentsMissed" value="2">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Days Overdue</label>
+                    <input type="number" class="form-control" id="collections-daysOverdue" value="45">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Last Payment Date</label>
+                    <input type="text" class="form-control" id="collections-lastPayment" value="12/15/2025">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Suspension Date</label>
+                    <input type="text" class="form-control" id="collections-suspensionDate" value="02/18/2026">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reinstatement Fee</label>
+                    <input type="text" class="form-control" id="collections-reinstatementFee" value="$50.00">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Payment Plan</label><br>
+                    <span class="style-option"><input type="radio" name="collections-paymentPlan" value="available" checked> Available</span>
+                    <span class="style-option"><input type="radio" name="collections-paymentPlan" value="not_available"> Not Available</span>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Additional Context (Optional)</label>
+                    <textarea class="form-control" id="collections-additionalContext" rows="3" placeholder="Enter any additional information to include in the email..."></textarea>
+                </div>
+            </div>
+
+            <h4 class="section-header">Email Style Settings</h4>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Tone</label><br>
+                    <span class="style-option"><input type="radio" name="collections-tone" value="formal"> Formal</span>
+                    <span class="style-option"><input type="radio" name="collections-tone" value="casual"> Casual</span>
+                    <span class="style-option"><input type="radio" name="collections-tone" value="urgent" checked> Urgent</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Length</label><br>
+                    <span class="style-option"><input type="radio" name="collections-length" value="brief"> Brief</span>
+                    <span class="style-option"><input type="radio" name="collections-length" value="standard" checked> Standard</span>
+                    <span class="style-option"><input type="radio" name="collections-length" value="detailed"> Detailed</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Empathy</label><br>
+                    <span class="style-option"><input type="radio" name="collections-empathy" value="neutral"> Neutral</span>
+                    <span class="style-option"><input type="radio" name="collections-empathy" value="warm" checked> Warm</span>
+                    <span class="style-option"><input type="radio" name="collections-empathy" value="highly_supportive"> Highly Supportive</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Call to Action</label><br>
+                    <span class="style-option"><input type="radio" name="collections-cta" value="none"> None</span>
+                    <span class="style-option"><input type="radio" name="collections-cta" value="soft"> Soft</span>
+                    <span class="style-option"><input type="radio" name="collections-cta" value="direct" checked> Direct</span>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-generate me-2" onclick="generateEmail('collections')">Generate Email</button>
+                <button class="btn btn-clear" onclick="clearForm('collections')">Clear Form</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Form for Dealer Sales -->
+        <div class="form-card" id="form-dealer">
+            <button class="back-btn" onclick="showScenarioSelection()">&larr; Back to Scenarios</button>
+            <span class="badge-scenario">Dealer Sales - Proposal Follow-up</span>
+
+            <h4 class="section-header">Common Parameters</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reference ID</label>
+                    <input type="text" class="form-control" id="dealer-refId" value="DEAL-2026-SAG">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Name</label>
+                    <input type="text" class="form-control" id="dealer-recipientName" value="Jennifer Walsh">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Email</label>
+                    <input type="email" class="form-control" id="dealer-recipientEmail" value="jwalsh@sunriseautogroup.com">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email Purpose</label>
+                    <input type="text" class="form-control" id="dealer-emailPurpose" value="Partnership Proposal Follow-up">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Outcome Summary</label>
+                    <input type="text" class="form-control" id="dealer-outcomeSummary" value="Following up on our meeting to discuss F&I product partnership opportunity.">
+                </div>
+            </div>
+
+            <h4 class="section-header">Domain Parameters (Dealer Sales)</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Dealership Name</label>
+                    <input type="text" class="form-control" id="dealer-dealershipName" value="Sunrise Auto Group">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Contact Title</label>
+                    <input type="text" class="form-control" id="dealer-contactTitle" value="F&I Director">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Location(s)</label>
+                    <input type="text" class="form-control" id="dealer-locations" value="Tampa, FL (3 locations)">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Monthly Volume</label>
+                    <input type="text" class="form-control" id="dealer-volume" value="200 vehicles">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Current Provider</label>
+                    <input type="text" class="form-control" id="dealer-currentProvider" value="National Auto Care">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Proposed Commission</label>
+                    <input type="text" class="form-control" id="dealer-commission" value="65% dealer retention">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">Products Discussed</label>
+                    <div class="checkbox-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dealer-prod-vsc" checked>
+                            <label class="form-check-label" for="dealer-prod-vsc">VSC</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dealer-prod-gap" checked>
+                            <label class="form-check-label" for="dealer-prod-gap">GAP</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dealer-prod-tire" checked>
+                            <label class="form-check-label" for="dealer-prod-tire">Tire & Wheel</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dealer-prod-ppm">
+                            <label class="form-check-label" for="dealer-prod-ppm">PPM</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dealer-prod-appearance">
+                            <label class="form-check-label" for="dealer-prod-appearance">Appearance</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dealer-prod-theft">
+                            <label class="form-check-label" for="dealer-prod-theft">Theft</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Pain Points</label>
+                    <input type="text" class="form-control" id="dealer-painPoints" value="Slow claims processing, poor dealer portal">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Meeting Date</label>
+                    <input type="text" class="form-control" id="dealer-meetingDate" value="01/28/2026">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Demo Scheduled</label>
+                    <input type="text" class="form-control" id="dealer-demoDate" value="02/10/2026">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Additional Context (Optional)</label>
+                    <textarea class="form-control" id="dealer-additionalContext" rows="3" placeholder="Enter any additional information to include in the email..."></textarea>
+                </div>
+            </div>
+
+            <h4 class="section-header">Email Style Settings</h4>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Tone</label><br>
+                    <span class="style-option"><input type="radio" name="dealer-tone" value="formal"> Formal</span>
+                    <span class="style-option"><input type="radio" name="dealer-tone" value="casual" checked> Casual</span>
+                    <span class="style-option"><input type="radio" name="dealer-tone" value="urgent"> Urgent</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Length</label><br>
+                    <span class="style-option"><input type="radio" name="dealer-length" value="brief"> Brief</span>
+                    <span class="style-option"><input type="radio" name="dealer-length" value="standard" checked> Standard</span>
+                    <span class="style-option"><input type="radio" name="dealer-length" value="detailed"> Detailed</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Empathy</label><br>
+                    <span class="style-option"><input type="radio" name="dealer-empathy" value="neutral"> Neutral</span>
+                    <span class="style-option"><input type="radio" name="dealer-empathy" value="warm" checked> Warm</span>
+                    <span class="style-option"><input type="radio" name="dealer-empathy" value="highly_supportive"> Highly Supportive</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Call to Action</label><br>
+                    <span class="style-option"><input type="radio" name="dealer-cta" value="none"> None</span>
+                    <span class="style-option"><input type="radio" name="dealer-cta" value="soft"> Soft</span>
+                    <span class="style-option"><input type="radio" name="dealer-cta" value="direct" checked> Direct</span>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-generate me-2" onclick="generateEmail('dealer')">Generate Email</button>
+                <button class="btn btn-clear" onclick="clearForm('dealer')">Clear Form</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Form for Contract Renewal -->
+        <div class="form-card" id="form-renewal">
+            <button class="back-btn" onclick="showScenarioSelection()">&larr; Back to Scenarios</button>
+            <span class="badge-scenario">Contract Renewal - Expiration Reminder</span>
+
+            <h4 class="section-header">Common Parameters</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reference ID</label>
+                    <input type="text" class="form-control" id="renewal-refId" value="RNW-2026-33421">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Name</label>
+                    <input type="text" class="form-control" id="renewal-recipientName" value="Patricia Coleman">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Recipient Email</label>
+                    <input type="email" class="form-control" id="renewal-recipientEmail" value="pcoleman@email.com">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email Purpose</label>
+                    <input type="text" class="form-control" id="renewal-emailPurpose" value="Contract Expiration Reminder">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Outcome Summary</label>
+                    <input type="text" class="form-control" id="renewal-outcomeSummary" value="Your vehicle service contract is expiring soon. Renew now to maintain coverage and save.">
+                </div>
+            </div>
+
+            <h4 class="section-header">Domain Parameters (Renewal)</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Contract Number</label>
+                    <input type="text" class="form-control" id="renewal-contractNumber" value="VSC-2021-33421">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Vehicle Info</label>
+                    <input type="text" class="form-control" id="renewal-vehicleInfo" value="2021 Chevrolet Silverado">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">VIN</label>
+                    <input type="text" class="form-control" id="renewal-vin" value="1GCUYGED5MZ000456">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Current Mileage</label>
+                    <input type="text" class="form-control" id="renewal-mileage" value="72,500">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Expiration Date</label>
+                    <input type="text" class="form-control" id="renewal-expirationDate" value="03/15/2026">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Days Until Expiry</label>
+                    <input type="number" class="form-control" id="renewal-daysUntilExpiry" value="40">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Coverage Type</label>
+                    <input type="text" class="form-control" id="renewal-coverageType" value="Powertrain Plus">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Claims History</label>
+                    <input type="text" class="form-control" id="renewal-claimsHistory" value="2 claims ($3,200 saved)">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Renewal Price</label>
+                    <input type="text" class="form-control" id="renewal-price" value="Starting at $899">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Early Renewal Discount</label>
+                    <input type="text" class="form-control" id="renewal-discount" value="15% if renewed by 02/28">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label class="form-label">Renewal Options</label>
+                    <div class="checkbox-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="renewal-opt-2yr" checked>
+                            <label class="form-check-label" for="renewal-opt-2yr">2yr / 24k miles</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="renewal-opt-3yr" checked>
+                            <label class="form-check-label" for="renewal-opt-3yr">3yr / 36k miles</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="renewal-opt-5yr">
+                            <label class="form-check-label" for="renewal-opt-5yr">5yr / 60k miles</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Loyalty Bonus</label>
+                    <input type="text" class="form-control" id="renewal-loyaltyBonus" value="Free oil change package">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Additional Context (Optional)</label>
+                    <textarea class="form-control" id="renewal-additionalContext" rows="3" placeholder="Enter any additional information to include in the email..."></textarea>
+                </div>
+            </div>
+
+            <h4 class="section-header">Email Style Settings</h4>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Tone</label><br>
+                    <span class="style-option"><input type="radio" name="renewal-tone" value="formal"> Formal</span>
+                    <span class="style-option"><input type="radio" name="renewal-tone" value="casual" checked> Casual</span>
+                    <span class="style-option"><input type="radio" name="renewal-tone" value="urgent"> Urgent</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Length</label><br>
+                    <span class="style-option"><input type="radio" name="renewal-length" value="brief"> Brief</span>
+                    <span class="style-option"><input type="radio" name="renewal-length" value="standard" checked> Standard</span>
+                    <span class="style-option"><input type="radio" name="renewal-length" value="detailed"> Detailed</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Empathy</label><br>
+                    <span class="style-option"><input type="radio" name="renewal-empathy" value="neutral"> Neutral</span>
+                    <span class="style-option"><input type="radio" name="renewal-empathy" value="warm" checked> Warm</span>
+                    <span class="style-option"><input type="radio" name="renewal-empathy" value="highly_supportive"> Highly Supportive</span>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Call to Action</label><br>
+                    <span class="style-option"><input type="radio" name="renewal-cta" value="none"> None</span>
+                    <span class="style-option"><input type="radio" name="renewal-cta" value="soft"> Soft</span>
+                    <span class="style-option"><input type="radio" name="renewal-cta" value="direct" checked> Direct</span>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-generate me-2" onclick="generateEmail('renewal')">Generate Email</button>
+                <button class="btn btn-clear" onclick="clearForm('renewal')">Clear Form</button>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Generating email with AI...</p>
+        </div>
+
+        <!-- Email Preview -->
+        <div class="preview-card" id="emailPreview">
+            <h4 class="section-header">Generated Email Preview</h4>
+            <div class="mb-3">
+                <span class="persona-badge" id="previewPersona">Generated by: Sarah Mitchell</span>
+            </div>
+            <div class="email-preview">
+                <div class="email-header">
+                    <div class="email-header-row">
+                        <span class="email-header-label">To:</span>
+                        <span id="previewTo">john.smith@email.com</span>
+                    </div>
+                    <div class="email-header-row">
+                        <span class="email-header-label">Subject:</span>
+                        <span id="previewSubject">Your Claim CLM-2026-00142 Has Been Approved</span>
+                    </div>
+                </div>
+                <div class="email-body" id="previewBody">
+                    <!-- Email body will be inserted here -->
+                </div>
+                <div class="email-signature" id="previewSignature">
+                    <!-- Signature will be inserted here -->
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-success btn-action">Send Email</button>
+                <button class="btn btn-outline-primary btn-action">Edit</button>
+                <button class="btn btn-outline-secondary btn-action" onclick="hidePreview()">Back to Form</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Persona names for random selection
+        const personaNames = [
+            "Sarah Mitchell",
+            "Michael Thompson",
+            "Jennifer Rodriguez",
+            "David Chen",
+            "Amanda Foster",
+            "Robert Williams",
+            "Michelle Davis",
+            "Christopher Martinez"
+        ];
+
+        const signature = `Claims Department, JM&A Group
+Fidelity Warranty Services, Inc.
+500 Jim Moran Boulevard, Deerfield Beach, FL 33442
+Toll Free: 1-800-327-5172 | Fax: 954-429-2699`;
+
+        let currentScenario = null;
+
+        // Scenario button click handlers
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const scenario = this.dataset.scenario;
+                showForm(scenario);
+            });
+        });
+
+        function showScenarioSelection() {
+            document.getElementById('scenarioSelection').style.display = 'block';
+            document.querySelectorAll('.form-card').forEach(card => card.classList.remove('active'));
+            document.getElementById('emailPreview').classList.remove('active');
+            document.getElementById('loadingSpinner').classList.remove('active');
+            currentScenario = null;
+        }
+
+        function showForm(scenario) {
+            document.getElementById('scenarioSelection').style.display = 'none';
+            document.querySelectorAll('.form-card').forEach(card => card.classList.remove('active'));
+            document.getElementById(`form-${scenario}`).classList.add('active');
+            document.getElementById('emailPreview').classList.remove('active');
+            currentScenario = scenario;
+        }
+
+        function hidePreview() {
+            document.getElementById('emailPreview').classList.remove('active');
+            if (currentScenario) {
+                document.getElementById(`form-${currentScenario}`).classList.add('active');
+            }
+        }
+
+        function getRandomPersona() {
+            return personaNames[Math.floor(Math.random() * personaNames.length)];
+        }
+
+        function getRadioValue(name) {
+            const radio = document.querySelector(`input[name="${name}"]:checked`);
+            return radio ? radio.value : '';
+        }
+
+        function generateEmail(scenario) {
+            // Hide form, show loading
+            document.getElementById(`form-${scenario}`).classList.remove('active');
+            document.getElementById('loadingSpinner').classList.add('active');
+
+            // Simulate API call delay
+            setTimeout(() => {
+                const persona = getRandomPersona();
+                let emailData = {};
+
+                switch(scenario) {
+                    case 'claims':
+                        emailData = generateClaimsEmail(persona);
+                        break;
+                    case 'collections':
+                        emailData = generateCollectionsEmail(persona);
+                        break;
+                    case 'dealer':
+                        emailData = generateDealerEmail(persona);
+                        break;
+                    case 'renewal':
+                        emailData = generateRenewalEmail(persona);
+                        break;
+                }
+
+                // Update preview
+                document.getElementById('previewPersona').textContent = `Generated by: ${persona}`;
+                document.getElementById('previewTo').textContent = emailData.to;
+                document.getElementById('previewSubject').textContent = emailData.subject;
+                document.getElementById('previewBody').innerHTML = emailData.body;
+                document.getElementById('previewSignature').innerHTML = `Best regards,<br><br><strong>${persona}</strong><br>${signature.replace(/\n/g, '<br>')}`;
+
+                // Hide loading, show preview
+                document.getElementById('loadingSpinner').classList.remove('active');
+                document.getElementById('emailPreview').classList.add('active');
+
+            }, 1500);
+        }
+
+        function generateClaimsEmail(persona) {
+            const name = document.getElementById('claims-recipientName').value;
+            const email = document.getElementById('claims-recipientEmail').value;
+            const refId = document.getElementById('claims-refId').value;
+            const vehicle = document.getElementById('claims-vehicleInfo').value;
+            const diagnosis = document.getElementById('claims-diagnosis').value;
+            const approved = document.getElementById('claims-approvedAmount').value;
+            const deductible = document.getElementById('claims-deductible').value;
+            const facility = document.getElementById('claims-repairFacility').value;
+            const additionalContext = document.getElementById('claims-additionalContext').value;
+
+            let body = `Dear ${name.split(' ')[0]},
+
+Great news! Your Vehicle Service Contract claim has been approved.
+
+<strong>Claim Details:</strong>
+• Claim ID: ${refId}
+• Vehicle: ${vehicle}
+• Repair: ${diagnosis}
+• Approved Amount: ${approved}
+• Your Deductible: ${deductible}
+
+${facility} has been authorized to proceed with the repair. Please contact them to schedule your appointment.`;
+
+            if (additionalContext) {
+                body += `\n\n${additionalContext}`;
+            }
+
+            body += `\n\nIf you have any questions, please don't hesitate to reach out.`;
+
+            return {
+                to: email,
+                subject: `Your Claim ${refId} Has Been Approved`,
+                body: body
+            };
+        }
+
+        function generateCollectionsEmail(persona) {
+            const name = document.getElementById('collections-recipientName').value;
+            const email = document.getElementById('collections-recipientEmail').value;
+            const refId = document.getElementById('collections-refId').value;
+            const contract = document.getElementById('collections-contractNumber').value;
+            const vehicle = document.getElementById('collections-vehicleInfo').value;
+            const amount = document.getElementById('collections-amountOverdue').value;
+            const days = document.getElementById('collections-daysOverdue').value;
+            const suspension = document.getElementById('collections-suspensionDate').value;
+            const paymentPlan = getRadioValue('collections-paymentPlan');
+            const additionalContext = document.getElementById('collections-additionalContext').value;
+
+            let body = `Dear ${name.split(' ')[0]},
+
+We're reaching out regarding your Vehicle Service Contract account, which is currently ${days} days past due.
+
+<strong>Account Details:</strong>
+• Contract: ${contract}
+• Vehicle: ${vehicle}
+• Amount Overdue: ${amount}
+• Coverage Suspension Date: ${suspension}
+
+Your coverage will be suspended if payment is not received by ${suspension}. Once suspended, a reinstatement fee will apply.
+
+${paymentPlan === 'available' ? '<strong>Good news:</strong> A payment plan is available! Call us to discuss options that work for your budget.' : ''}`;
+
+            if (additionalContext) {
+                body += `\n\n${additionalContext}`;
+            }
+
+            body += `\n\nPlease call us immediately at 1-800-327-5172 or visit our payment portal to bring your account current.`;
+
+            return {
+                to: email,
+                subject: `URGENT: Your Account is ${days} Days Past Due - Action Required`,
+                body: body
+            };
+        }
+
+        function generateDealerEmail(persona) {
+            const name = document.getElementById('dealer-recipientName').value;
+            const email = document.getElementById('dealer-recipientEmail').value;
+            const dealership = document.getElementById('dealer-dealershipName').value;
+            const title = document.getElementById('dealer-contactTitle').value;
+            const volume = document.getElementById('dealer-volume').value;
+            const commission = document.getElementById('dealer-commission').value;
+            const meetingDate = document.getElementById('dealer-meetingDate').value;
+            const demoDate = document.getElementById('dealer-demoDate').value;
+            const painPoints = document.getElementById('dealer-painPoints').value;
+            const additionalContext = document.getElementById('dealer-additionalContext').value;
+
+            const products = [];
+            if (document.getElementById('dealer-prod-vsc').checked) products.push('VSC');
+            if (document.getElementById('dealer-prod-gap').checked) products.push('GAP');
+            if (document.getElementById('dealer-prod-tire').checked) products.push('Tire & Wheel');
+            if (document.getElementById('dealer-prod-ppm').checked) products.push('PPM');
+            if (document.getElementById('dealer-prod-appearance').checked) products.push('Appearance');
+            if (document.getElementById('dealer-prod-theft').checked) products.push('Theft Protection');
+
+            let body = `Hi ${name.split(' ')[0]},
+
+Thank you for taking the time to meet with us on ${meetingDate} to discuss F&I product solutions for ${dealership}.
+
+Based on your ${volume} monthly volume, we've prepared a customized proposal that addresses your concerns about ${painPoints.toLowerCase()}.
+
+<strong>What We're Proposing:</strong>
+• Products: ${products.join(', ')}
+• ${commission}
+• 24-hour claims turnaround
+• Dedicated dealer portal with real-time tracking`;
+
+            if (additionalContext) {
+                body += `\n\n${additionalContext}`;
+            }
+
+            body += `\n\nI'm looking forward to our product demo on <strong>${demoDate}</strong> where I can show you exactly how our platform solves the challenges you mentioned.
+
+Let me know if you have any questions before then!`;
+
+            return {
+                to: email,
+                subject: `Following Up: ${dealership} Partnership Proposal`,
+                body: body
+            };
+        }
+
+        function generateRenewalEmail(persona) {
+            const name = document.getElementById('renewal-recipientName').value;
+            const email = document.getElementById('renewal-recipientEmail').value;
+            const vehicle = document.getElementById('renewal-vehicleInfo').value;
+            const expiration = document.getElementById('renewal-expirationDate').value;
+            const days = document.getElementById('renewal-daysUntilExpiry').value;
+            const mileage = document.getElementById('renewal-mileage').value;
+            const claims = document.getElementById('renewal-claimsHistory').value;
+            const price = document.getElementById('renewal-price').value;
+            const discount = document.getElementById('renewal-discount').value;
+            const bonus = document.getElementById('renewal-loyaltyBonus').value;
+            const additionalContext = document.getElementById('renewal-additionalContext').value;
+
+            let body = `Dear ${name.split(' ')[0]},
+
+Your Vehicle Service Contract for your ${vehicle} expires on ${expiration} - just ${days} days away!
+
+Over the past few years, your coverage has saved you ${claims.includes('$') ? claims.split('(')[1].replace(')', '') : claims} on covered repairs. Don't let that protection end.
+
+<strong>Renew Now and Enjoy:</strong>
+• ${discount}
+• ${bonus}
+• Plans ${price.toLowerCase()}
+
+Your ${vehicle.split(' ').slice(0, 2).join(' ')} has ${mileage} miles - this is when repairs become more frequent. Keep yourself protected!`;
+
+            if (additionalContext) {
+                body += `\n\n${additionalContext}`;
+            }
+
+            body += `\n\n<strong>Call us today at 1-800-327-5172</strong> or click below to renew online.`;
+
+            return {
+                to: email,
+                subject: `Your Coverage Expires Soon - Renew & Save 15%`,
+                body: body
+            };
+        }
+
+        function clearForm(scenario) {
+            const form = document.getElementById(`form-${scenario}`);
+            const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="number"], textarea');
+            inputs.forEach(input => input.value = '');
+        }
+    </script>
+</body>
+</html>

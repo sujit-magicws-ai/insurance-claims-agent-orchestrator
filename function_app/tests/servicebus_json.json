@@ -1,0 +1,19 @@
+{
+  "message_id": "<PN3PPFDAF398764226B8E3CB7597F12ABEF8B9AA@PN3PPFDAF398764.INDPRD01.PROD.OUTLOOK.COM>",
+  "received_at": "2026-02-02T12:32:02+00:00Z",
+  "from": "Sujit Sarkar <sujit_s@pursuitsoftware.com>",
+  "to": [
+    "\"querypal.chat@gmail.com\" <querypal.chat@gmail.com>"
+  ],
+  "cc": [],
+  "subject": "Claim Document",
+  "body_text": "Hi\r\nPls review my service claim for Battery not charging; alternator tested bad\r\n\r\n\r\n",
+  "body_html": "<html>\r\n<head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\">\r\n<style type=\"text/css\" style=\"display:none;\"> P {margin-top:0;margin-bottom:0;} </style>\r\n</head>\r\n<body dir=\"ltr\">\r\n<div style=\"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\" class=\"elementToProof\">\r\nHi&nbsp;</div>\r\n<div style=\"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\" class=\"elementToProof\">\r\nPls review my service claim for Battery not charging; alternator tested bad</div>\r\n<div style=\"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\" class=\"elementToProof\">\r\n<br>\r\n</div>\r\n<div style=\"font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\" class=\"elementToProof\">\r\n<br>\r\n</div>\r\n</body>\r\n</html>\r\n",
+  "attachments": [
+    {
+      "filename": "Claim_Adams_011.pdf",
+      "mime_type": "application/pdf",
+      "blob_url": "https://samwspanishchatbotdev.blob.core.windows.net/sa-mail-monitoring-container/_PN3PPFDAF398764226B8E3CB7597F12ABEF8B9AA_PN3PPFDAF398764.INDPRD01.PROD.OUTLOOK.COM_/20260202_123217_fd5b8ddb_Claim_Adams_011.pdf%22
+    }
+  ]
+}

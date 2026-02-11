@@ -186,6 +186,142 @@ async def serve_presentation(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
+@app.route(route="email-composer-demo", methods=["GET"])
+async def serve_email_composer_demo(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Serve the Email Composer Agent Demo HTML page.
+
+    Returns:
+        200: HTML demo page
+        404: Static file not found
+    """
+    try:
+        static_dir = Path(__file__).parent / "static"
+        html_path = static_dir / "email_composer_demo.html"
+
+        if not html_path.exists():
+            return func.HttpResponse(
+                "Email Composer Demo not found",
+                status_code=404
+            )
+
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        return func.HttpResponse(
+            html_content,
+            mimetype="text/html",
+            status_code=200
+        )
+
+    except Exception as e:
+        logger.error(f"Error serving email composer demo: {str(e)}")
+        return func.HttpResponse(
+            f"Error loading email composer demo: {str(e)}",
+            status_code=500
+        )
+
+
+@app.route(route="compose-email", methods=["POST"])
+async def compose_email_api(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    API endpoint to compose an email using the Email Composer Agent (Agent 3).
+
+    Expected JSON payload:
+        {
+            "claim_id": "CLM-2026-00142",
+            "recipient_name": "John Smith",
+            "recipient_email": "john.smith@email.com",
+            "email_purpose": "Claim Approval Notification",
+            "outcome_summary": "Your claim has been approved...",
+            "additional_context": "Domain-specific context...",
+            "config": {
+                "tone": "formal",
+                "length": "standard",
+                "empathy": "warm",
+                "call_to_action": "soft"
+            }
+        }
+
+    Returns:
+        200: JSON with composed email
+        400: Invalid request
+        500: Agent error
+    """
+    from shared.agent_client import invoke_email_composer
+    from shared.models import Agent3Input, EmailComposerConfig
+
+    try:
+        # Parse request body
+        try:
+            body = req.get_json()
+        except ValueError:
+            return func.HttpResponse(
+                json.dumps({"error": "Invalid JSON in request body"}),
+                mimetype="application/json",
+                status_code=400
+            )
+
+        # Validate required fields
+        required_fields = ["claim_id", "recipient_name", "recipient_email", "email_purpose", "outcome_summary"]
+        missing_fields = [f for f in required_fields if not body.get(f)]
+        if missing_fields:
+            return func.HttpResponse(
+                json.dumps({"error": f"Missing required fields: {missing_fields}"}),
+                mimetype="application/json",
+                status_code=400
+            )
+
+        # Build config from request
+        config_data = body.get("config", {})
+        config = EmailComposerConfig(
+            tone=config_data.get("tone", "formal"),
+            length=config_data.get("length", "standard"),
+            empathy=config_data.get("empathy", "warm"),
+            call_to_action=config_data.get("call_to_action", "soft"),
+            template=config_data.get("template", "default")
+        )
+
+        # Build Agent3 input
+        agent3_input = Agent3Input(
+            claim_id=body.get("claim_id"),
+            recipient_name=body.get("recipient_name"),
+            recipient_email=body.get("recipient_email"),
+            email_purpose=body.get("email_purpose"),
+            outcome_summary=body.get("outcome_summary"),
+            additional_context=body.get("additional_context", ""),
+            config=config
+        )
+
+        # Invoke Email Composer Agent (Agent 3)
+        logger.info(f"Composing email for {agent3_input.claim_id} via API")
+        agent3_output = invoke_email_composer(agent3_input)
+
+        # Return composed email
+        response_data = {
+            "claim_id": agent3_output.claim_id,
+            "email_subject": agent3_output.email_subject,
+            "email_body": agent3_output.email_body,
+            "recipient_name": agent3_output.recipient_name,
+            "recipient_email": agent3_output.recipient_email,
+            "generated_at": agent3_output.generated_at.isoformat() if agent3_output.generated_at else None
+        }
+
+        return func.HttpResponse(
+            json.dumps(response_data),
+            mimetype="application/json",
+            status_code=200
+        )
+
+    except Exception as e:
+        logger.error(f"Error composing email: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": str(e)}),
+            mimetype="application/json",
+            status_code=500
+        )
+
+
 @app.route(route="review/{instance_id}", methods=["GET"])
 async def serve_review_ui(req: func.HttpRequest) -> func.HttpResponse:
     """
