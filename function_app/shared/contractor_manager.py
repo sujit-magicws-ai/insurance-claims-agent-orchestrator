@@ -9,12 +9,17 @@ This module has zero dependency on Azure Durable Functions and can
 be tested standalone with a simple Python script.
 """
 
+import json
 import logging
 import threading
 import time as _time
 from collections import deque
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+_ET = ZoneInfo("America/New_York")
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +49,7 @@ class ContractorEvent:
 
     def __init__(self, agent_id: str, event_type: str, contractor_name: str,
                  claim_id: Optional[str], message: str):
-        self.timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        self.timestamp = datetime.now(_ET).strftime("%H:%M:%S")
         self.agent_id = agent_id
         self.event_type = event_type
         self.contractor_name = contractor_name
@@ -391,58 +396,31 @@ class ContractorManager:
         self._event_log: deque[ContractorEvent] = deque(maxlen=50)
         self._event_lock = threading.Lock()
 
-        self.pools: dict[str, ContractorPool] = {
-            "classifier": ContractorPool(
-                agent_id="classifier",
-                display_name="Claim Classifier",
-                capacity=3,
-                max_contractors=5,
-                contractor_defs=[
-                    {"name": "AIContractor Alice", "color": "#2dd4a8"},
-                    {"name": "AIContractor Bob", "color": "#7c5cfc"},
-                    {"name": "AIContractor Priya", "color": "#f59e0b"},
-                    {"name": "AIContractor David", "color": "#38bdf8"},
-                    {"name": "AIContractor Mei", "color": "#c084fc"},
-                ],
+        # Load persona definitions from external JSON
+        personas_path = Path(__file__).parent / "agent_personas.json"
+        with open(personas_path, "r", encoding="utf-8") as f:
+            personas = json.load(f)
+
+        self.pools: dict[str, ContractorPool] = {}
+        for agent_id, cfg in personas.items():
+            self.pools[agent_id] = ContractorPool(
+                agent_id=agent_id,
+                display_name=cfg["display_name"],
+                capacity=cfg["capacity"],
+                max_contractors=cfg["max_contractors"],
+                contractor_defs=cfg["contractors"],
                 event_log=self._event_log,
                 event_lock=self._event_lock,
-            ),
-            "adjudicator": ContractorPool(
-                agent_id="adjudicator",
-                display_name="Claim Adjudicator",
-                capacity=3,
-                max_contractors=5,
-                contractor_defs=[
-                    {"name": "AIContractor Alice", "color": "#2dd4a8"},
-                    {"name": "AIContractor Bob", "color": "#7c5cfc"},
-                    {"name": "AIContractor Priya", "color": "#f59e0b"},
-                    {"name": "AIContractor David", "color": "#38bdf8"},
-                    {"name": "AIContractor Mei", "color": "#c084fc"},
-                ],
-                event_log=self._event_log,
-                event_lock=self._event_lock,
-            ),
-            "email_composer": ContractorPool(
-                agent_id="email_composer",
-                display_name="Email Composer",
-                capacity=5,
-                max_contractors=3,
-                contractor_defs=[
-                    {"name": "AIContractor Alice", "color": "#2dd4a8"},
-                    {"name": "AIContractor Bob", "color": "#7c5cfc"},
-                    {"name": "AIContractor Priya", "color": "#f59e0b"},
-                ],
-                event_log=self._event_log,
-                event_lock=self._event_lock,
-            ),
-        }
+            )
 
         # HITL counter (tracked separately — not a contractor pool)
         self._hitl_waiting_count: int = 0
+        self._hitl_reviewed_count: int = 0
         self._hitl_lock = threading.Lock()
 
         # Email Received counter (tracked separately — not a contractor pool)
         self._email_received_count: int = 0
+        self._email_total_received_count: int = 0
         self._email_received_lock = threading.Lock()
 
         # Email Sender counter (tracked separately — not a contractor pool)
@@ -480,12 +458,15 @@ class ContractorManager:
     # Email Received Counter
     # =========================================================================
 
-    def increment_email_received(self):
+    def increment_email_received(self, claim_id: Optional[str] = None):
         """Increment the email received counter (claim entered the system)."""
         with self._email_received_lock:
             self._email_received_count += 1
+            self._email_total_received_count += 1
+        self._record_counter_event("receiver", "email_received", claim_id,
+            f"{claim_id or 'Claim'} received by Email Receiver")
 
-    def decrement_email_received(self):
+    def decrement_email_received(self, claim_id: Optional[str] = None):
         """Decrement the email received counter (claim entered classifier)."""
         with self._email_received_lock:
             self._email_received_count = max(0, self._email_received_count - 1)
@@ -495,39 +476,58 @@ class ContractorManager:
         with self._email_received_lock:
             return self._email_received_count
 
+    def get_email_total_received_count(self) -> int:
+        """Get total emails received."""
+        with self._email_received_lock:
+            return self._email_total_received_count
+
     # =========================================================================
     # HITL Counter
     # =========================================================================
 
-    def increment_hitl_waiting(self):
+    def increment_hitl_waiting(self, claim_id: Optional[str] = None):
         """Increment the HITL waiting counter (claim entered HITL stage)."""
         with self._hitl_lock:
             self._hitl_waiting_count += 1
+        self._record_counter_event("hitl", "hitl_entered", claim_id,
+            f"{claim_id or 'Claim'} entered HITL — awaiting manual estimate")
 
-    def decrement_hitl_waiting(self):
+    def decrement_hitl_waiting(self, claim_id: Optional[str] = None):
         """Decrement the HITL waiting counter (claim approved/rejected)."""
         with self._hitl_lock:
             self._hitl_waiting_count = max(0, self._hitl_waiting_count - 1)
+            self._hitl_reviewed_count += 1
+        self._record_counter_event("hitl", "hitl_reviewed", claim_id,
+            f"{claim_id or 'Claim'} reviewed — leaving HITL")
 
     def get_hitl_waiting_count(self) -> int:
         """Get current HITL waiting count."""
         with self._hitl_lock:
             return self._hitl_waiting_count
 
+    def get_hitl_reviewed_count(self) -> int:
+        """Get total HITL claims reviewed."""
+        with self._hitl_lock:
+            return self._hitl_reviewed_count
+
     # =========================================================================
     # Email Sender Counter
     # =========================================================================
 
-    def increment_email_sending(self):
+    def increment_email_sending(self, claim_id: Optional[str] = None):
         """Increment the email sending counter (email send started)."""
         with self._email_lock:
             self._email_sending_count += 1
+        self._record_counter_event("sender", "email_sending", claim_id,
+            f"{claim_id or 'Claim'} email sending started")
 
-    def decrement_email_sending(self):
+    def decrement_email_sending(self, claim_id: Optional[str] = None):
         """Decrement the email sending counter and increment sent (email delivered)."""
         with self._email_lock:
             self._email_sending_count = max(0, self._email_sending_count - 1)
             self._email_sent_count += 1
+        self._record_counter_event("sender", "email_sent", claim_id,
+            f"{claim_id or 'Claim'} email sent successfully")
 
     def get_email_sending_count(self) -> int:
         """Get current email sending count."""
@@ -565,6 +565,17 @@ class ContractorManager:
                                 pass
 
     # =========================================================================
+    # Counter Event Recording
+    # =========================================================================
+
+    def _record_counter_event(self, agent_id: str, event_type: str,
+                              claim_id: Optional[str], message: str):
+        """Record an event from a non-pool counter (Receiver, HITL, Sender)."""
+        evt = ContractorEvent(agent_id, event_type, "", claim_id, message)
+        with self._event_lock:
+            self._event_log.appendleft(evt)
+
+    # =========================================================================
     # Event Log Access
     # =========================================================================
 
@@ -599,10 +610,12 @@ class ContractorManager:
             "email_receiver": {
                 "display_name": "Email Received",
                 "received_count": self.get_email_received_count(),
+                "total_received_count": self.get_email_total_received_count(),
             },
             "hitl": {
                 "display_name": "Manual Estimate",
                 "waiting_count": self.get_hitl_waiting_count(),
+                "reviewed_count": self.get_hitl_reviewed_count(),
             },
             "email_sender": {
                 "display_name": "Email Sender",

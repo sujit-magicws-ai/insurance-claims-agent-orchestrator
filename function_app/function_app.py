@@ -552,7 +552,7 @@ async def start_claim_orchestration(req: func.HttpRequest, client) -> func.HttpR
 
         # Track email received for clone dashboard
         from shared.contractor_manager import ContractorManager
-        ContractorManager().increment_email_received()
+        ContractorManager().increment_email_received(claim_request.claim_id)
 
         logger.info(f"Started orchestration {instance_id} for claim {claim_request.claim_id}")
 
@@ -1045,7 +1045,7 @@ async def servicebus_claim_trigger(message: func.ServiceBusMessage, client) -> N
 
         # Track email received for clone dashboard
         from shared.contractor_manager import ContractorManager
-        ContractorManager().increment_email_received()
+        ContractorManager().increment_email_received(claim_request.claim_id)
 
         logger.info(
             f"Started orchestration {instance_id} for claim {claim_request.claim_id} "
@@ -1168,7 +1168,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     # =========================================================================
     # Increment HITL waiting counter
     yield context.call_activity("update_counter_activity",
-        {"counter": "hitl", "action": "increment"})
+        {"counter": "hitl", "action": "increment", "claim_id": claim_id})
 
     stage_timestamps["awaiting_started"] = context.current_utc_datetime.isoformat()
     context.set_custom_status({
@@ -1208,7 +1208,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     if winner == timeout_task:
         # Timeout occurred — decrement HITL counter
         yield context.call_activity("update_counter_activity",
-            {"counter": "hitl", "action": "decrement"})
+            {"counter": "hitl", "action": "decrement", "claim_id": claim_id})
 
         if not context.is_replaying:
             logger.warning(f"[{instance_id}] Approval timed out after {APPROVAL_TIMEOUT_HOURS} hours")
@@ -1229,7 +1229,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
 
         # Decrement HITL counter (approval or rejection received)
         yield context.call_activity("update_counter_activity",
-            {"counter": "hitl", "action": "decrement"})
+            {"counter": "hitl", "action": "decrement", "claim_id": claim_id})
 
         # Get approval decision (may come as string or dict)
         approval_decision = approval_task.result
@@ -1353,7 +1353,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
             if agent3_output:
                 # Increment email sender counter
                 yield context.call_activity("update_counter_activity",
-                    {"counter": "email_sender", "action": "increment"})
+                    {"counter": "email_sender", "action": "increment", "claim_id": claim_id})
 
                 stage_timestamps["email_sending_started"] = context.current_utc_datetime.isoformat()
                 context.set_custom_status({
@@ -1381,7 +1381,7 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
 
                 # Decrement email sender counter (email delivered or failed)
                 yield context.call_activity("update_counter_activity",
-                    {"counter": "email_sender", "action": "decrement"})
+                    {"counter": "email_sender", "action": "decrement", "claim_id": claim_id})
 
                 if not context.is_replaying:
                     if send_email_result.get("success"):
@@ -1537,7 +1537,7 @@ def assign_contractor_activity(activityInput: dict) -> dict:
 
     # Claim leaving "received" stage and entering classifier
     if agent_id == "classifier":
-        manager.decrement_email_received()
+        manager.decrement_email_received(claim_id)
 
     contractor_name = manager.assign_job(agent_id, claim_id)
 
@@ -1589,24 +1589,25 @@ def update_counter_activity(activityInput: dict) -> dict:
 
     counter = activityInput["counter"]
     action = activityInput["action"]
+    claim_id = activityInput.get("claim_id")
 
     manager = ContractorManager()
 
     if counter == "hitl":
         if action == "increment":
-            manager.increment_hitl_waiting()
+            manager.increment_hitl_waiting(claim_id)
         else:
-            manager.decrement_hitl_waiting()
+            manager.decrement_hitl_waiting(claim_id)
     elif counter == "email_sender":
         if action == "increment":
-            manager.increment_email_sending()
+            manager.increment_email_sending(claim_id)
         else:
-            manager.decrement_email_sending()
+            manager.decrement_email_sending(claim_id)
     elif counter == "email_received":
         if action == "increment":
-            manager.increment_email_received()
+            manager.increment_email_received(claim_id)
         else:
-            manager.decrement_email_received()
+            manager.decrement_email_received(claim_id)
 
     logger.info(f"[Contractor] Counter {counter} {action}ed")
 

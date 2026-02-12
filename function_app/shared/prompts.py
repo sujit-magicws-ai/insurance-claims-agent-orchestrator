@@ -57,7 +57,9 @@ def get_full_signature(persona_name: str = None) -> str:
     """
     if persona_name is None:
         persona_name = get_random_persona()
-    return AGENT3_SIGNATURE_TEMPLATE.format(persona_name=persona_name)
+    # Strip "AIContractor " prefix for human-readable signature
+    display_name = persona_name.removeprefix("AIContractor ")
+    return AGENT3_SIGNATURE_TEMPLATE.format(persona_name=display_name)
 
 # =============================================================================
 # Agent1 Prompt (Claim Classification)
@@ -363,7 +365,8 @@ def build_agent1_prompt(
     """
     prefix = ""
     if persona_name:
-        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=persona_name)
+        display_name = persona_name.removeprefix("AIContractor ")
+        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=display_name)
     return prefix + AGENT1_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         email_content=email_content,
@@ -386,7 +389,8 @@ def build_agent2_prompt(claim_id: str, claim_data_json: str, persona_name: str =
     """
     prefix = ""
     if persona_name:
-        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=persona_name)
+        display_name = persona_name.removeprefix("AIContractor ")
+        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=display_name)
     return prefix + AGENT2_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         claim_data_json=claim_data_json
@@ -431,7 +435,8 @@ def build_agent3_prompt(
 
     prefix = ""
     if persona_name:
-        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=persona_name)
+        display_name = persona_name.removeprefix("AIContractor ")
+        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=display_name)
 
     return prefix + AGENT3_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,

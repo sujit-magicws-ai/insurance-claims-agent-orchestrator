@@ -429,6 +429,93 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
 
+        /* ---- Claims List Link ---- */
+        .claims-list-link {
+            display: inline-block;
+            margin-top: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--accent-blue);
+            text-decoration: none;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 0.2rem 0.6rem;
+            transition: all 0.2s;
+        }
+        .claims-list-link:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-green);
+        }
+
+        /* ---- Event Log Modal ---- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-content {
+            background: var(--bg-lane);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 900px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0;
+            color: var(--text-secondary);
+        }
+        .modal-close {
+            background: none;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.2rem 0.6rem;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+        .modal-body {
+            padding: 0.5rem 0.75rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Make inline event log header clickable */
+        .event-log-header { cursor: pointer; }
+        .event-log-header:hover { color: var(--text-primary); }
+        .expand-hint {
+            font-size: 0.6rem;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--text-secondary);
+        }
+
         /* ---- Connection Status ---- */
         .conn-status {
             font-size: 0.7rem;
@@ -488,6 +575,7 @@
         <div class="lane-body" style="justify-content:center; align-items:center;">
             <div class="compact-count green" id="email-received-count">0</div>
             <div class="compact-label">Email<br>Received</div>
+            <div class="compact-sent" id="email-total-received-count">0 received</div>
         </div>
     </div>
 
@@ -517,6 +605,8 @@
         <div class="lane-body" style="justify-content:center; align-items:center;">
             <div class="compact-count amber" id="hitl-count">0</div>
             <div class="compact-label">Manual Estimate<br>Waiting</div>
+            <div class="compact-sent" id="hitl-reviewed-count">0 reviewed</div>
+            <a href="/api/dashboard" target="_blank" class="claims-list-link">Claims List</a>
         </div>
     </div>
 
@@ -569,8 +659,8 @@
 
 <!-- ===== EVENT LOG ===== -->
 <div class="event-log">
-    <div class="event-log-header">
-        <span>Event Log</span>
+    <div class="event-log-header" id="event-log-header">
+        <span>Event Log <span class="expand-hint">(click to expand)</span></span>
         <span class="scroll-lock-hint" id="scroll-lock-hint">scroll paused — click to resume</span>
     </div>
     <div class="event-log-body" id="event-log-body">
@@ -579,6 +669,17 @@
             <span class="event-icon">&#9889;</span>
             <span class="event-msg">Waiting for activity...</span>
         </div>
+    </div>
+</div>
+
+<!-- ===== EVENT LOG MODAL ===== -->
+<div class="modal-overlay" id="event-log-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Event Log</h2>
+            <button class="modal-close" id="modal-close" title="Close (Esc)">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-event-body"></div>
     </div>
 </div>
 
@@ -611,6 +712,39 @@ themeToggle.addEventListener('click', () => {
 });
 
 // =================================================================
+// Event Log Modal
+// =================================================================
+const eventLogModal = document.getElementById('event-log-modal');
+const modalEventBody = document.getElementById('modal-event-body');
+const modalCloseBtn = document.getElementById('modal-close');
+const eventLogHeader = document.getElementById('event-log-header');
+
+eventLogHeader.addEventListener('click', (e) => {
+    // Don't open modal when clicking the scroll-lock hint
+    if (e.target.id === 'scroll-lock-hint') return;
+    eventLogModal.classList.add('open');
+    // Sync current inline log content into modal
+    modalEventBody.innerHTML = eventLogBody.innerHTML;
+    modalEventBody.scrollTop = 0;
+});
+
+modalCloseBtn.addEventListener('click', () => {
+    eventLogModal.classList.remove('open');
+});
+
+// Close on overlay click (outside modal content)
+eventLogModal.addEventListener('click', (e) => {
+    if (e.target === eventLogModal) eventLogModal.classList.remove('open');
+});
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && eventLogModal.classList.contains('open')) {
+        eventLogModal.classList.remove('open');
+    }
+});
+
+// =================================================================
 // Clone Visualizer — Polling & Rendering Engine
 // =================================================================
 
@@ -631,6 +765,11 @@ const EVENT_ICONS = {
     terminate: '&#128308;',     // red circle
     job_assigned: '&#128203;',  // clipboard
     job_completed: '&#9989;',   // checkmark
+    email_received: '&#128233;', // incoming envelope
+    hitl_entered: '&#9995;',    // raised hand
+    hitl_reviewed: '&#9989;',   // checkmark
+    email_sending: '&#128228;', // outgoing envelope
+    email_sent: '&#9989;',      // checkmark
 };
 
 const EVENT_STYLE = {
@@ -638,6 +777,11 @@ const EVENT_STYLE = {
     terminate: 'hl-red',
     job_assigned: 'hl-blue',
     job_completed: 'hl-green',
+    email_received: 'hl-green',
+    hitl_entered: 'hl',
+    hitl_reviewed: 'hl-green',
+    email_sending: 'hl-blue',
+    email_sent: 'hl-green',
 };
 
 // -----------------------------------------------------------------
@@ -667,7 +811,7 @@ function renderServerEvents(events) {
     if (events.length === renderedEventCount) return;
     renderedEventCount = events.length;
 
-    eventLogBody.innerHTML = events.map(e => {
+    const html = events.map(e => {
         const icon = EVENT_ICONS[e.type] || '&#9889;';
         const style = EVENT_STYLE[e.type] || 'hl';
         // Build a rich message from structured data
@@ -685,6 +829,13 @@ function renderServerEvents(events) {
             <span class="event-msg">${msg}</span>
         </div>`;
     }).join('');
+
+    eventLogBody.innerHTML = html;
+
+    // Sync to modal if open
+    if (eventLogModal.classList.contains('open')) {
+        modalEventBody.innerHTML = html;
+    }
 
     // Auto-scroll to newest (bottom in column-reverse = scrollTop 0)
     if (!userScrollLocked) {
@@ -800,11 +951,15 @@ function renderState(state) {
     if (state.email_receiver) {
         document.getElementById('email-received-count').textContent =
             state.email_receiver.received_count;
+        document.getElementById('email-total-received-count').textContent =
+            state.email_receiver.total_received_count + ' received';
     }
 
     // HITL
     document.getElementById('hitl-count').textContent =
         state.hitl.waiting_count;
+    document.getElementById('hitl-reviewed-count').textContent =
+        state.hitl.reviewed_count + ' reviewed';
 
     // Email Sender
     if (state.email_sender) {
