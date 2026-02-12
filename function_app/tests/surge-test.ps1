@@ -2,17 +2,20 @@
 # surge-test.ps1 — Fire N claims, wait for HITL, bulk-approve
 #
 # Usage:
-#   .\surge-test.ps1              # 10 claims (default)
+#   .\surge-test.ps1              # 10 claims (default), wait then bulk-approve
 #   .\surge-test.ps1 -N 5         # 5 claims
 #   .\surge-test.ps1 -N 15 -Port 7071
 #   .\surge-test.ps1 -SkipApprove # Fire only, don't auto-approve
+#   .\surge-test.ps1 -N 4 -AutoApprove   # Approve each claim within seconds
 # =============================================================================
 
 param(
     [int]$N = 10,
     [int]$Port = 7071,
     [switch]$SkipApprove,
+    [switch]$AutoApprove,
     [int]$PollIntervalSec = 3,
+    [int]$AutoApproveIntervalSec = 1,
     [int]$TimeoutMinutes = 10
 )
 
@@ -199,79 +202,20 @@ try {
 }
 
 # =============================================================================
-# Phase 3: Poll until all reach awaiting_approval
+# Helper: Build approval body for a claim
 # =============================================================================
-Write-Phase "Phase 3: Waiting for all claims to reach HITL pause"
-
-$deadline = (Get-Date).AddMinutes($TimeoutMinutes)
-$awaitingCount = 0
-
-while ($awaitingCount -lt $successCount -and (Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds $PollIntervalSec
-
-    $awaitingCount = 0
-    $statusSummary = @{}
-
-    foreach ($instId in $instanceIds) {
-        try {
-            $s = Invoke-RestMethod -Uri "$BaseUrl/claims/status/$instId" -Method Get
-            $step = $s.custom_status.step
-            if (-not $statusSummary.ContainsKey($step)) { $statusSummary[$step] = 0 }
-            $statusSummary[$step]++
-            if ($step -eq "awaiting_approval") { $awaitingCount++ }
-        } catch {
-            if (-not $statusSummary.ContainsKey("unknown")) { $statusSummary["unknown"] = 0 }
-            $statusSummary["unknown"]++
-        }
-    }
-
-    $summary = ($statusSummary.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " | "
-    Write-Wait "$awaitingCount / $successCount at HITL  [$summary]"
-
-    # Show contractor state
-    try {
-        $state = Invoke-RestMethod -Uri "$BaseUrl/contractors/state" -Method Get
-        $classifierPool = $state.stages.classifier
-        $contractors = ($classifierPool.active_contractors | ForEach-Object { "$($_.name)($($_.slots_used)/$($_.capacity))" }) -join ", "
-        $bobMsg = if ($classifierPool.contractor_count -gt 1) { " << BOB SPAWNED!" } else { "" }
-        Write-Info "  Classifier: [$contractors] queue=$($classifierPool.pending_count)$bobMsg"
-        Write-Info "  HITL waiting: $($state.hitl.waiting_count)"
-    } catch {}
-}
-
-if ($awaitingCount -lt $successCount) {
-    Write-Err "Timeout: only $awaitingCount / $successCount reached HITL after $TimeoutMinutes minutes"
-    Write-Info "Continuing with available claims..."
-}
-
-Write-Ok "All $awaitingCount claims are at HITL pause"
-
-if ($SkipApprove) {
-    Write-Phase "Done (SkipApprove flag set)"
-    Write-Info "Claims are waiting at HITL. Approve manually via:"
-    Write-Info "  POST $BaseUrl/claims/approve/<instanceId>"
-    exit 0
-}
-
-# =============================================================================
-# Phase 4: Bulk-approve all claims (parallel)
-# =============================================================================
-Write-Phase "Phase 4: Bulk-approving $awaitingCount claims"
-
-$approveJobs = @()
 $estimates = @(4750, 890, 8200, 3200, 1950, 650, 6500, 3800, 1100, 4200, 5800, 2100, 2800, 1650, 2200)
 
-for ($i = 0; $i -lt $instanceIds.Count; $i++) {
-    $instId = $instanceIds[$i]
-    $template = $ClaimTemplates[$i % $ClaimTemplates.Count]
-    $est = $estimates[$i % $estimates.Count]
+function Build-ApproveBody($index) {
+    $template = $ClaimTemplates[$index % $ClaimTemplates.Count]
+    $est = $estimates[$index % $estimates.Count]
     $partsCost = [math]::Round($est * 0.6, 2)
     $laborCost = [math]::Round($est * 0.4, 2)
 
-    $approveBody = @{
+    return @{
         decision     = "approved"
         reviewer     = "surge-tester@company.com"
-        comments     = "Bulk approved by surge-test.ps1"
+        comments     = "Approved by surge-test.ps1"
         claim_amounts = @{
             total_parts_cost = $partsCost
             total_labor_cost = $laborCost
@@ -284,14 +228,14 @@ for ($i = 0; $i -lt $instanceIds.Count; $i++) {
                 email = $template.sender
             }
             contract = @{
-                contract_number = "VSC-2024-SURGE-$($i+1)"
+                contract_number = "VSC-2024-SURGE-$($index+1)"
                 coverage_type   = "VSC - Comprehensive"
                 deductible      = 100
             }
             vehicle = @{
                 year  = 2022
                 make  = "Test"
-                model = "Vehicle $($i+1)"
+                model = "Vehicle $($index+1)"
             }
             repair = @{
                 facility_name      = "Test Repair Shop"
@@ -306,34 +250,180 @@ for ($i = 0; $i -lt $instanceIds.Count; $i++) {
             }
         }
     } | ConvertTo-Json -Depth 10
+}
 
-    $approveJobs += Start-Job -ScriptBlock {
-        param($url, $jsonBody, $id)
-        try {
-            $resp = Invoke-RestMethod -Uri $url -Method Post -Body $jsonBody -ContentType "application/json"
-            return @{ instance_id = $id; status = "ok"; error = $null }
-        } catch {
-            return @{ instance_id = $id; status = "error"; error = $_.Exception.Message }
+# =============================================================================
+# Phase 3+4: AutoApprove mode — poll-and-approve each claim immediately
+# =============================================================================
+if ($AutoApprove) {
+    Write-Phase "Phase 3+4: Auto-approve (approve each claim as it reaches HITL)"
+
+    $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+    $approvedSet = @{}      # instanceId -> $true once approved
+    $approvedCount = 0
+
+    while ($approvedCount -lt $successCount -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds $AutoApproveIntervalSec
+
+        $statusSummary = @{}
+
+        for ($i = 0; $i -lt $instanceIds.Count; $i++) {
+            $instId = $instanceIds[$i]
+
+            try {
+                $s = Invoke-RestMethod -Uri "$BaseUrl/claims/status/$instId" -Method Get
+                $step = $s.custom_status.step
+                $runtime = $s.runtime_status
+
+                if (-not $statusSummary.ContainsKey($step)) { $statusSummary[$step] = 0 }
+                $statusSummary[$step]++
+
+                # Approve immediately if at HITL and not yet approved
+                if ($step -eq "awaiting_approval" -and -not $approvedSet.ContainsKey($instId)) {
+                    $body = Build-ApproveBody $i
+                    try {
+                        Invoke-RestMethod -Uri "$BaseUrl/claims/approve/$instId" -Method Post -Body $body -ContentType "application/json" | Out-Null
+                        $approvedSet[$instId] = $true
+                        $approvedCount++
+                        Write-Ok "$instId approved instantly"
+                    } catch {
+                        Write-Err "$instId approve failed: $($_.Exception.Message)"
+                    }
+                }
+
+                # Count already-completed claims as approved too
+                if ($runtime -eq "Completed" -and -not $approvedSet.ContainsKey($instId)) {
+                    $approvedSet[$instId] = $true
+                    $approvedCount++
+                }
+            } catch {
+                if (-not $statusSummary.ContainsKey("unknown")) { $statusSummary["unknown"] = 0 }
+                $statusSummary["unknown"]++
+            }
         }
-    } -ArgumentList "$BaseUrl/claims/approve/$instId", $approveBody, $instId
-}
 
-Write-Info "Waiting for all approvals to submit..."
-$approveResults = $approveJobs | Wait-Job | Receive-Job
-$approveJobs | Remove-Job -Force
+        $summary = ($statusSummary.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " | "
+        Write-Wait "$approvedCount / $successCount approved  [$summary]"
 
-$approvedCount = 0
-foreach ($r in $approveResults) {
-    if ($r.status -eq "ok") {
-        Write-Ok "$($r.instance_id) approved"
-        $approvedCount++
-    } else {
-        Write-Err "$($r.instance_id) FAILED: $($r.error)"
+        # Show all contractor pools
+        try {
+            $state = Invoke-RestMethod -Uri "$BaseUrl/contractors/state" -Method Get
+            foreach ($stageKey in @("classifier", "adjudicator", "email_composer")) {
+                $stage = $state.stages.$stageKey
+                $contractors = ($stage.active_contractors | ForEach-Object { "$($_.name)($($_.slots_used)/$($_.capacity))" }) -join ", "
+                $scaleMsg = if ($stage.contractor_count -gt 1) { " << SCALED!" } else { "" }
+                Write-Info "  $($stage.display_name): [$contractors] in-flight=$($stage.total_jobs_in_flight)$scaleMsg"
+            }
+            Write-Info "  HITL waiting: $($state.hitl.waiting_count)"
+        } catch {}
+
+        Write-Host ""
     }
-}
 
-Write-Host ""
-Write-Info "$approvedCount / $($instanceIds.Count) approvals submitted"
+    if ($approvedCount -lt $successCount) {
+        Write-Err "Timeout: only $approvedCount / $successCount approved after $TimeoutMinutes minutes"
+    } else {
+        Write-Ok "All $approvedCount claims approved"
+    }
+
+    Write-Host ""
+    Write-Info "$approvedCount / $successCount approvals completed"
+
+# =============================================================================
+# Phase 3: Standard mode — wait for all to reach HITL, then bulk-approve
+# =============================================================================
+} else {
+    Write-Phase "Phase 3: Waiting for all claims to reach HITL pause"
+
+    $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+    $awaitingCount = 0
+
+    while ($awaitingCount -lt $successCount -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds $PollIntervalSec
+
+        $awaitingCount = 0
+        $statusSummary = @{}
+
+        foreach ($instId in $instanceIds) {
+            try {
+                $s = Invoke-RestMethod -Uri "$BaseUrl/claims/status/$instId" -Method Get
+                $step = $s.custom_status.step
+                if (-not $statusSummary.ContainsKey($step)) { $statusSummary[$step] = 0 }
+                $statusSummary[$step]++
+                if ($step -eq "awaiting_approval") { $awaitingCount++ }
+            } catch {
+                if (-not $statusSummary.ContainsKey("unknown")) { $statusSummary["unknown"] = 0 }
+                $statusSummary["unknown"]++
+            }
+        }
+
+        $summary = ($statusSummary.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join " | "
+        Write-Wait "$awaitingCount / $successCount at HITL  [$summary]"
+
+        # Show contractor state
+        try {
+            $state = Invoke-RestMethod -Uri "$BaseUrl/contractors/state" -Method Get
+            $classifierPool = $state.stages.classifier
+            $contractors = ($classifierPool.active_contractors | ForEach-Object { "$($_.name)($($_.slots_used)/$($_.capacity))" }) -join ", "
+            $bobMsg = if ($classifierPool.contractor_count -gt 1) { " << BOB SPAWNED!" } else { "" }
+            Write-Info "  Classifier: [$contractors] queue=$($classifierPool.pending_count)$bobMsg"
+            Write-Info "  HITL waiting: $($state.hitl.waiting_count)"
+        } catch {}
+    }
+
+    if ($awaitingCount -lt $successCount) {
+        Write-Err "Timeout: only $awaitingCount / $successCount reached HITL after $TimeoutMinutes minutes"
+        Write-Info "Continuing with available claims..."
+    }
+
+    Write-Ok "All $awaitingCount claims are at HITL pause"
+
+    if ($SkipApprove) {
+        Write-Phase "Done (SkipApprove flag set)"
+        Write-Info "Claims are waiting at HITL. Approve manually via:"
+        Write-Info "  POST $BaseUrl/claims/approve/<instanceId>"
+        exit 0
+    }
+
+    # =============================================================================
+    # Phase 4: Bulk-approve all claims (parallel)
+    # =============================================================================
+    Write-Phase "Phase 4: Bulk-approving $awaitingCount claims"
+
+    $approveJobs = @()
+
+    for ($i = 0; $i -lt $instanceIds.Count; $i++) {
+        $instId = $instanceIds[$i]
+        $approveBody = Build-ApproveBody $i
+
+        $approveJobs += Start-Job -ScriptBlock {
+            param($url, $jsonBody, $id)
+            try {
+                $resp = Invoke-RestMethod -Uri $url -Method Post -Body $jsonBody -ContentType "application/json"
+                return @{ instance_id = $id; status = "ok"; error = $null }
+            } catch {
+                return @{ instance_id = $id; status = "error"; error = $_.Exception.Message }
+            }
+        } -ArgumentList "$BaseUrl/claims/approve/$instId", $approveBody, $instId
+    }
+
+    Write-Info "Waiting for all approvals to submit..."
+    $approveResults = $approveJobs | Wait-Job | Receive-Job
+    $approveJobs | Remove-Job -Force
+
+    $approvedCount = 0
+    foreach ($r in $approveResults) {
+        if ($r.status -eq "ok") {
+            Write-Ok "$($r.instance_id) approved"
+            $approvedCount++
+        } else {
+            Write-Err "$($r.instance_id) FAILED: $($r.error)"
+        }
+    }
+
+    Write-Host ""
+    Write-Info "$approvedCount / $($instanceIds.Count) approvals submitted"
+}
 
 # =============================================================================
 # Phase 5: Watch Agent2/Agent3 contractor pools (Bob in adjudicator)

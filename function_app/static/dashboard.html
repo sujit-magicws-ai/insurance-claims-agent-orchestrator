@@ -264,12 +264,7 @@
     </div>
 
     <div class="container">
-        <!-- API Error Banner (hidden by default) -->
-        <div class="alert alert-danger d-flex align-items-center mb-3" id="apiErrorBanner" style="display: none;">
-            <strong class="me-2">Dashboard Error:</strong>
-            <span id="apiErrorMessage"></span>
-            <small class="ms-auto text-muted">Check func start console for details</small>
-        </div>
+        <!-- API Error Banner (disabled — investigate later) -->
 
         <!-- New Claim Form -->
         <div class="card mb-4 new-claim-form">
@@ -487,13 +482,9 @@
         let isLoading = false;
         const AUTO_REFRESH_SECONDS = 10;
 
-        // Show API error in a visible banner
+        // Show API error in a visible banner (disabled — investigate later)
         function showApiError(msg) {
-            const banner = document.getElementById('apiErrorBanner');
-            banner.innerHTML = '<strong class="me-2">Dashboard Error:</strong> ' +
-                '<span style="color:red;font-weight:bold;">' + (msg || 'No error details available') + '</span>' +
-                ' <small class="ms-auto text-muted">Check browser console (F12) for details</small>';
-            banner.style.display = 'flex';
+            return;
         }
 
         // Generate a claim ID if not provided (CHT = Claim HTTP Trigger)

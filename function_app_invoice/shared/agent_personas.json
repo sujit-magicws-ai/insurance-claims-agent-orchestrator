@@ -1,0 +1,24 @@
+{
+    "invoice_parser": {
+        "display_name": "Invoice Parser",
+        "capacity": 3,
+        "max_contractors": 5,
+        "contractors": [
+            {"name": "AIContractor Hana", "color": "#2dd4a8"},
+            {"name": "AIContractor Leo", "color": "#7c5cfc"},
+            {"name": "AIContractor Zara", "color": "#f59e0b"},
+            {"name": "AIContractor Omar", "color": "#38bdf8"},
+            {"name": "AIContractor Nina", "color": "#c084fc"}
+        ]
+    },
+    "email_composer": {
+        "display_name": "Email Composer",
+        "capacity": 5,
+        "max_contractors": 3,
+        "contractors": [
+            {"name": "AIContractor Sofia", "color": "#fbbf24"},
+            {"name": "AIContractor Raj", "color": "#2dd4bf"},
+            {"name": "AIContractor Elena", "color": "#f87171"}
+        ]
+    }
+}
