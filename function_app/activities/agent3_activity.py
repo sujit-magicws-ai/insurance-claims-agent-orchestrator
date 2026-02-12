@@ -134,6 +134,7 @@ def run_agent3_activity(input_data: dict) -> dict:
     """
     instance_id = input_data.get("_instance_id")
     claim_id = input_data.get("claim_id")
+    persona_name = input_data.get("persona_name")
     agent1_output = input_data.get("agent1_output", {})
     agent2_output = input_data.get("agent2_output", {})
     email_config = input_data.get("email_config")
@@ -153,10 +154,11 @@ def run_agent3_activity(input_data: dict) -> dict:
         logger.info(f"{log_prefix}Email Composer input built - Purpose: {agent3_input.email_purpose}")
         logger.info(f"{log_prefix}Recipient: {agent3_input.recipient_name} <{agent3_input.recipient_email}>")
 
-        # Invoke Email Composer Agent
+        # Invoke Email Composer Agent (uses contractor persona if assigned)
         agent3_output = invoke_email_composer(
             input_data=agent3_input,
-            instance_id=instance_id
+            instance_id=instance_id,
+            persona_name=persona_name
         )
 
         logger.info(f"{log_prefix}Email Composer completed - Subject: {agent3_output.email_subject}")

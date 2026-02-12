@@ -144,6 +144,7 @@ def run_agent2_activity(input_data: dict) -> dict:
     """
     instance_id = input_data.get("_instance_id")
     claim_id = input_data.get("claim_id")
+    persona_name = input_data.get("persona_name")
     agent1_output = input_data.get("agent1_output", {})
     approval_decision = input_data.get("approval_decision", {})
 
@@ -160,7 +161,8 @@ def run_agent2_activity(input_data: dict) -> dict:
         agent2_output = invoke_agent2(
             claim_id=claim_id,
             claim_data=agent2_input,
-            instance_id=instance_id
+            instance_id=instance_id,
+            persona_name=persona_name
         )
 
         logger.info(f"{log_prefix}Agent2 completed - Decision: {agent2_output.decision}")

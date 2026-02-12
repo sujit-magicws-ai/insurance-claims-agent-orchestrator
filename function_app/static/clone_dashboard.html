@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clone Visualizer — AI Contractor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root, [data-theme="dark"] {
+            --bg-dark: #0f1923;
+            --bg-card: #1a2634;
+            --bg-lane: #141e2a;
+            --border-subtle: #2a3a4a;
+            --text-primary: #e8edf2;
+            --text-secondary: #8899aa;
+            --accent-green: #2dd4a8;
+            --accent-purple: #7c5cfc;
+            --accent-amber: #f59e0b;
+            --accent-blue: #38bdf8;
+            --accent-pink: #c084fc;
+            --status-full: #ef4444;
+            --status-available: #22c55e;
+            --status-idle: #6b7280;
+            --scrollbar-thumb: #2a3a4a;
+            --progress-track: rgba(255,255,255,0.08);
+            --footer-border: rgba(255,255,255,0.05);
+            --theme-toggle-bg: #1a2634;
+            --theme-toggle-border: #2a3a4a;
+            --theme-toggle-icon: '🌙';
+        }
+
+        [data-theme="light"] {
+            --bg-dark: #f0f2f5;
+            --bg-card: #ffffff;
+            --bg-lane: #f8f9fb;
+            --border-subtle: #d1d9e0;
+            --text-primary: #1a2634;
+            --text-secondary: #5a6a7a;
+            --accent-green: #0d9668;
+            --accent-purple: #6c4cec;
+            --accent-amber: #d97706;
+            --accent-blue: #0284c7;
+            --accent-pink: #9333ea;
+            --status-full: #dc2626;
+            --status-available: #16a34a;
+            --status-idle: #9ca3af;
+            --scrollbar-thumb: #c1c9d0;
+            --progress-track: rgba(0,0,0,0.08);
+            --footer-border: rgba(0,0,0,0.07);
+            --theme-toggle-bg: #ffffff;
+            --theme-toggle-border: #d1d9e0;
+            --theme-toggle-icon: '☀️';
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        /* ---- Theme Toggle ---- */
+        .theme-toggle {
+            background: var(--theme-toggle-bg);
+            border: 1px solid var(--theme-toggle-border);
+            border-radius: 20px;
+            padding: 0.3rem 0.7rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.2s ease;
+        }
+        .theme-toggle:hover {
+            border-color: var(--accent-blue);
+        }
+
+        /* ---- Header ---- */
+        .dash-header {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-card) 100%);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .dash-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header h1 .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            display: inline-block;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .stat-pills {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .stat-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .stat-pill .val {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .stat-pill.in-flight .val { color: var(--accent-blue); }
+        .stat-pill.completed .val { color: var(--accent-green); }
+        .stat-pill.pending .val { color: var(--accent-amber); }
+
+        /* ---- Pipeline Grid ---- */
+        .pipeline {
+            display: grid;
+            grid-template-columns: auto auto 1fr auto auto auto 1fr auto 1fr auto auto;
+            gap: 0;
+            padding: 1rem;
+            min-height: calc(100vh - 200px);
+        }
+        @media (max-width: 1200px) {
+            .pipeline {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .pipeline { grid-template-columns: 1fr; }
+        }
+
+        /* ---- Lane ---- */
+        .lane {
+            background: var(--bg-lane);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            margin: 0 0.4rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .lane-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .lane-header h2 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0;
+            color: var(--text-secondary);
+        }
+        .lane-meta {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .lane-meta span strong {
+            color: var(--text-primary);
+        }
+        .lane-body {
+            padding: 0.75rem;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        /* ---- Flow Arrow between lanes ---- */
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            padding: 0 0.25rem;
+        }
+        @media (max-width: 1200px) {
+            .flow-arrow { display: none; }
+        }
+
+        /* ---- HITL / Compact Lanes ---- */
+        .lane.hitl, .lane.email-sender {
+            max-width: 140px;
+            min-width: 120px;
+        }
+        .compact-count {
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            padding: 1.5rem 0;
+        }
+        .compact-count.green { color: var(--accent-green); }
+        .compact-count.amber { color: var(--accent-amber); }
+        .compact-count.blue { color: var(--accent-blue); }
+        .compact-label {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .compact-sent {
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            padding-top: 0.5rem;
+        }
+
+        /* ---- Contractor Card ---- */
+        .contractor-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-left: 4px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            transition: all 0.3s ease;
+            animation: card-enter 0.4s ease-out;
+        }
+        @keyframes card-enter {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .contractor-card.spawning {
+            box-shadow: 0 0 12px rgba(45, 212, 168, 0.4);
+        }
+        [data-theme="light"] .contractor-card.spawning {
+            box-shadow: 0 0 16px rgba(13, 150, 104, 0.35);
+        }
+        .contractor-card.terminating {
+            animation: card-exit 0.5s ease-in forwards;
+        }
+        @keyframes card-exit {
+            from { opacity: 1; transform: translateY(0); max-height: 200px; }
+            to { opacity: 0; transform: translateY(10px); max-height: 0; padding: 0; margin: 0; overflow: hidden; }
+        }
+        .contractor-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .contractor-name {
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .contractor-name .color-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .slot-count {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .status-badge {
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            color: #fff;
+        }
+        .status-badge.full { background: var(--status-full); }
+        .status-badge.available { background: var(--status-available); }
+        .status-badge.idle { background: var(--status-idle); }
+
+        /* ---- Job Slot ---- */
+        .job-slot {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.3rem 0;
+            font-size: 0.75rem;
+        }
+        .job-claim-id {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-weight: 600;
+            min-width: 80px;
+            color: var(--text-primary);
+        }
+        a.job-claim-id {
+            text-decoration: none;
+            color: var(--accent-blue);
+            cursor: pointer;
+        }
+        a.job-claim-id:hover {
+            text-decoration: underline;
+            color: var(--accent-green);
+        }
+        .job-claim-id.empty {
+            color: var(--text-secondary);
+            font-weight: 400;
+            font-style: italic;
+        }
+        .progress-track {
+            flex: 1;
+            height: 8px;
+            background: var(--progress-track);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            min-width: 0;
+        }
+        .progress-fill.complete {
+            transition: width 0.2s ease-out;
+            background: var(--accent-green) !important;
+        }
+        .progress-pct {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            min-width: 32px;
+            text-align: right;
+        }
+        .contractor-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.4rem;
+            padding-top: 0.35rem;
+            border-top: 1px solid var(--footer-border);
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        /* ---- Event Log ---- */
+        .event-log {
+            background: var(--bg-lane);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            margin: 0 1rem 1rem;
+            max-height: 180px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .event-log-header {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .scroll-lock-hint {
+            font-size: 0.6rem;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .scroll-lock-hint.visible { opacity: 1; }
+        .event-log-body {
+            padding: 0.4rem 0.75rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .event-entry {
+            font-size: 0.7rem;
+            padding: 0.2rem 0;
+            display: flex;
+            gap: 0.5rem;
+            align-items: baseline;
+            animation: event-enter 0.3s ease-out;
+        }
+        @keyframes event-enter {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .event-time {
+            color: var(--text-secondary);
+            font-family: 'Consolas', monospace;
+            font-size: 0.65rem;
+            min-width: 55px;
+        }
+        .event-icon { font-size: 0.75rem; }
+        .event-msg { color: var(--text-primary); }
+        .event-msg .hl { font-weight: 700; }
+        .event-msg .hl-green { color: var(--accent-green); font-weight: 700; }
+        .event-msg .hl-red { color: var(--status-full); font-weight: 700; }
+        .event-msg .hl-blue { color: var(--accent-blue); font-weight: 700; }
+
+        /* ---- Scrollbar ---- */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+
+        /* ---- Connection Status ---- */
+        .conn-status {
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .conn-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--status-idle);
+        }
+        .conn-dot.connected { background: var(--accent-green); }
+        .conn-dot.error { background: var(--status-full); }
+    </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="dash-header">
+    <h1>
+        <span class="dot"></span>
+        AI Contractor Workforce
+        <span style="font-weight:400; font-size:0.85rem; color:var(--text-secondary);">Workload Visualizer</span>
+    </h1>
+    <div class="stat-pills">
+        <div class="stat-pill in-flight">
+            <span>In Flight</span>
+            <span class="val" id="stat-in-flight">0</span>
+        </div>
+        <div class="stat-pill completed">
+            <span>Completed</span>
+            <span class="val" id="stat-completed">0</span>
+        </div>
+        <div class="stat-pill pending">
+            <span>Pending</span>
+            <span class="val" id="stat-pending">0</span>
+        </div>
+        <div class="conn-status">
+            <span class="conn-dot" id="conn-dot"></span>
+            <span id="conn-label">connecting...</span>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark theme">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-label">Dark</span>
+        </button>
+    </div>
+</div>
+
+<!-- ===== PIPELINE GRID ===== -->
+<div class="pipeline">
+    <!-- Email Received Lane -->
+    <div class="lane hitl" id="lane-email-receiver">
+        <div class="lane-header">
+            <h2>Receiver</h2>
+        </div>
+        <div class="lane-body" style="justify-content:center; align-items:center;">
+            <div class="compact-count green" id="email-received-count">0</div>
+            <div class="compact-label">Email<br>Received</div>
+        </div>
+    </div>
+
+    <div class="flow-arrow">&#9654;</div>
+
+    <!-- Lane 1: Classifier -->
+    <div class="lane" id="lane-classifier">
+        <div class="lane-header">
+            <h2>Claim Classifier Agent</h2>
+            <span class="slot-count" id="lane-classifier-workers">1/5</span>
+        </div>
+        <div class="lane-meta">
+            <span>Capacity: <strong id="lane-classifier-cap">3</strong>/person</span>
+            <span>Pending: <strong id="lane-classifier-pending">0</strong></span>
+        </div>
+        <div class="lane-body" id="lane-classifier-body">
+        </div>
+    </div>
+
+    <div class="flow-arrow">&#9654;</div>
+
+    <!-- HITL Lane -->
+    <div class="lane hitl" id="lane-hitl">
+        <div class="lane-header">
+            <h2>HITL</h2>
+        </div>
+        <div class="lane-body" style="justify-content:center; align-items:center;">
+            <div class="compact-count amber" id="hitl-count">0</div>
+            <div class="compact-label">Manual Estimate<br>Waiting</div>
+        </div>
+    </div>
+
+    <div class="flow-arrow">&#9654;</div>
+
+    <!-- Lane 2: Adjudicator -->
+    <div class="lane" id="lane-adjudicator">
+        <div class="lane-header">
+            <h2>Claim Adjudicator Agent</h2>
+            <span class="slot-count" id="lane-adjudicator-workers">1/5</span>
+        </div>
+        <div class="lane-meta">
+            <span>Capacity: <strong id="lane-adjudicator-cap">3</strong>/person</span>
+            <span>Pending: <strong id="lane-adjudicator-pending">0</strong></span>
+        </div>
+        <div class="lane-body" id="lane-adjudicator-body">
+        </div>
+    </div>
+
+    <div class="flow-arrow">&#9654;</div>
+
+    <!-- Lane 3: Email Composer -->
+    <div class="lane" id="lane-email_composer">
+        <div class="lane-header">
+            <h2>Email Composer Agent</h2>
+            <span class="slot-count" id="lane-email_composer-workers">1/3</span>
+        </div>
+        <div class="lane-meta">
+            <span>Capacity: <strong id="lane-email_composer-cap">5</strong>/person</span>
+            <span>Pending: <strong id="lane-email_composer-pending">0</strong></span>
+        </div>
+        <div class="lane-body" id="lane-email_composer-body">
+        </div>
+    </div>
+
+    <div class="flow-arrow">&#9654;</div>
+
+    <!-- Email Sender Lane -->
+    <div class="lane email-sender" id="lane-email-sender">
+        <div class="lane-header">
+            <h2>Sender</h2>
+        </div>
+        <div class="lane-body" style="justify-content:center; align-items:center;">
+            <div class="compact-count blue" id="email-sending-count">0</div>
+            <div class="compact-label">Sending</div>
+            <div class="compact-sent" id="email-sent-count">0 sent</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== EVENT LOG ===== -->
+<div class="event-log">
+    <div class="event-log-header">
+        <span>Event Log</span>
+        <span class="scroll-lock-hint" id="scroll-lock-hint">scroll paused — click to resume</span>
+    </div>
+    <div class="event-log-body" id="event-log-body">
+        <div class="event-entry">
+            <span class="event-time">--:--:--</span>
+            <span class="event-icon">&#9889;</span>
+            <span class="event-msg">Waiting for activity...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// =================================================================
+// Theme Toggle
+// =================================================================
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-icon');
+const themeLabel = document.getElementById('theme-label');
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('clone-dashboard-theme', theme);
+    if (theme === 'light') {
+        themeIcon.textContent = '\u2600\uFE0F';
+        themeLabel.textContent = 'Light';
+    } else {
+        themeIcon.textContent = '\uD83C\uDF19';
+        themeLabel.textContent = 'Dark';
+    }
+}
+
+// Load saved preference (default: dark)
+setTheme(localStorage.getItem('clone-dashboard-theme') || 'dark');
+
+themeToggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    setTheme(current === 'light' ? 'dark' : 'light');
+});
+
+// =================================================================
+// Clone Visualizer — Polling & Rendering Engine
+// =================================================================
+
+const POLL_INTERVAL = 500; // ms
+const API_URL = '/api/contractors/state';
+const STAGE_ORDER = ['classifier', 'adjudicator', 'email_composer'];
+
+let prevState = null;
+let pollCount = 0;
+let isFirstRender = true;
+
+// Event log state
+let renderedEventCount = 0;  // tracks how many server events we've rendered
+let userScrollLocked = false; // true when user has scrolled up manually
+
+const EVENT_ICONS = {
+    spawn: '&#128994;',         // green circle
+    terminate: '&#128308;',     // red circle
+    job_assigned: '&#128203;',  // clipboard
+    job_completed: '&#9989;',   // checkmark
+};
+
+const EVENT_STYLE = {
+    spawn: 'hl-green',
+    terminate: 'hl-red',
+    job_assigned: 'hl-blue',
+    job_completed: 'hl-green',
+};
+
+// -----------------------------------------------------------------
+// Event Log — Server-Side Events
+// -----------------------------------------------------------------
+const eventLogBody = document.getElementById('event-log-body');
+const scrollLockHint = document.getElementById('scroll-lock-hint');
+
+// Detect manual scroll (scroll up = lock, scroll to bottom = unlock)
+eventLogBody.addEventListener('scroll', () => {
+    // column-reverse: scrollTop 0 = bottom (newest), negative = scrolled up
+    userScrollLocked = eventLogBody.scrollTop < -10;
+    scrollLockHint.classList.toggle('visible', userScrollLocked);
+});
+
+// Click hint to resume auto-scroll
+scrollLockHint.addEventListener('click', () => {
+    eventLogBody.scrollTop = 0;
+    userScrollLocked = false;
+    scrollLockHint.classList.remove('visible');
+});
+
+function renderServerEvents(events) {
+    if (!events || events.length === 0) return;
+
+    // Only render if we have new events (compare count)
+    if (events.length === renderedEventCount) return;
+    renderedEventCount = events.length;
+
+    eventLogBody.innerHTML = events.map(e => {
+        const icon = EVENT_ICONS[e.type] || '&#9889;';
+        const style = EVENT_STYLE[e.type] || 'hl';
+        // Build a rich message from structured data
+        let msg = e.message || '';
+        // Highlight contractor name and claim_id
+        if (e.contractor) {
+            msg = msg.replace(e.contractor, `<span class="${style}">${e.contractor}</span>`);
+        }
+        if (e.claim_id) {
+            msg = msg.replace(e.claim_id, `<span class="hl-blue">${e.claim_id}</span>`);
+        }
+        return `<div class="event-entry">
+            <span class="event-time">${e.timestamp}</span>
+            <span class="event-icon">${icon}</span>
+            <span class="event-msg">${msg}</span>
+        </div>`;
+    }).join('');
+
+    // Auto-scroll to newest (bottom in column-reverse = scrollTop 0)
+    if (!userScrollLocked) {
+        eventLogBody.scrollTop = 0;
+    }
+}
+
+// -----------------------------------------------------------------
+// Render Contractor Card Inner Content
+// -----------------------------------------------------------------
+function renderCardInnerHTML(contractor, capacity) {
+    const borderColor = contractor.color;
+    const statusClass = contractor.status;
+    const statusLabel = contractor.status.toUpperCase();
+
+    let slotsHtml = '';
+    // Active jobs
+    for (const job of contractor.active_jobs) {
+        const fillColor = contractor.color;
+        const completeClass = job.progress_pct >= 100 ? ' complete' : '';
+        const claimStatusUrl = `/api/claims/status/claim-${job.claim_id}`;
+        slotsHtml += `
+            <div class="job-slot" data-job="${job.claim_id}">
+                <a class="job-claim-id" href="${claimStatusUrl}" target="_blank" title="View claim detail">${job.claim_id}</a>
+                <div class="progress-track">
+                    <div class="progress-fill${completeClass}" style="width:${job.progress_pct}%; background:${fillColor};"></div>
+                </div>
+                <span class="progress-pct">${job.progress_pct}%</span>
+            </div>`;
+    }
+    // Empty slots
+    const emptyCount = capacity - contractor.active_jobs.length;
+    for (let i = 0; i < emptyCount; i++) {
+        slotsHtml += `
+            <div class="job-slot">
+                <span class="job-claim-id empty">(empty)</span>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:0%;"></div>
+                </div>
+                <span class="progress-pct"></span>
+            </div>`;
+    }
+
+    return `
+        <div class="contractor-card-header">
+            <span class="contractor-name">
+                <span class="color-dot" style="background:${borderColor};"></span>
+                ${contractor.name}
+                <span class="slot-count">(${contractor.slots_used}/${capacity})</span>
+            </span>
+            <span class="status-badge ${statusClass}">${statusLabel}</span>
+        </div>
+        ${slotsHtml}
+        <div class="contractor-footer">
+            <span>Completed: ${contractor.jobs_completed}</span>
+            ${contractor.is_primary ? '<span style="color:var(--accent-green);">PRIMARY</span>' : ''}
+        </div>`;
+}
+
+// -----------------------------------------------------------------
+// Incremental DOM Update for a Lane
+// -----------------------------------------------------------------
+function updateLaneCards(stageId, contractors, capacity) {
+    const body = document.getElementById(`lane-${stageId}-body`);
+    const expectedIds = new Set();
+
+    for (const c of contractors) {
+        const cardId = `card-${stageId}-${c.name}`;
+        expectedIds.add(cardId);
+
+        let card = document.getElementById(cardId);
+        if (!card) {
+            // New contractor spawned — create card with enter animation + glow
+            card = document.createElement('div');
+            card.id = cardId;
+            card.className = 'contractor-card spawning';
+            card.style.borderLeftColor = c.color;
+            body.appendChild(card);
+            // Remove spawning glow after animation
+            setTimeout(() => card.classList.remove('spawning'), 2000);
+        }
+
+        // Update inner content (card element persists — no animation re-trigger)
+        card.innerHTML = renderCardInnerHTML(c, capacity);
+        card.style.borderLeftColor = c.color;
+    }
+
+    // Animate removal for terminated contractors
+    for (const child of [...body.children]) {
+        if (child.id && child.id.startsWith('card-') && !expectedIds.has(child.id)) {
+            if (!child.classList.contains('terminating')) {
+                child.classList.add('terminating');
+                setTimeout(() => child.remove(), 500);
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------
+// Render Full State (Incremental)
+// -----------------------------------------------------------------
+function renderState(state) {
+    // Global stats
+    const totalPending = STAGE_ORDER.reduce((sum, id) =>
+        sum + (state.stages[id]?.pending_count || 0), 0);
+    document.getElementById('stat-in-flight').textContent =
+        state.global.total_claims_in_flight;
+    document.getElementById('stat-completed').textContent =
+        state.global.total_claims_completed;
+    document.getElementById('stat-pending').textContent = totalPending;
+
+    // Email Received
+    if (state.email_receiver) {
+        document.getElementById('email-received-count').textContent =
+            state.email_receiver.received_count;
+    }
+
+    // HITL
+    document.getElementById('hitl-count').textContent =
+        state.hitl.waiting_count;
+
+    // Email Sender
+    if (state.email_sender) {
+        document.getElementById('email-sending-count').textContent =
+            state.email_sender.sending_count;
+        document.getElementById('email-sent-count').textContent =
+            state.email_sender.sent_count + ' sent';
+    }
+
+    // Each agent lane — incremental card updates
+    for (const stageId of STAGE_ORDER) {
+        const stage = state.stages[stageId];
+        if (!stage) continue;
+
+        // Lane meta (text-only updates — no flash)
+        document.getElementById(`lane-${stageId}-workers`).textContent =
+            `${stage.contractor_count}/${stage.max_contractors}`;
+        document.getElementById(`lane-${stageId}-cap`).textContent =
+            stage.capacity_per_contractor;
+        document.getElementById(`lane-${stageId}-pending`).textContent =
+            stage.pending_count;
+
+        // Contractor cards — incremental DOM reconciliation
+        updateLaneCards(stageId, stage.active_contractors, stage.capacity_per_contractor);
+    }
+
+    // Server-side event log
+    if (state.events) {
+        renderServerEvents(state.events);
+    }
+}
+
+// -----------------------------------------------------------------
+// Poll Loop
+// -----------------------------------------------------------------
+async function poll() {
+    const connDot = document.getElementById('conn-dot');
+    const connLabel = document.getElementById('conn-label');
+
+    try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const state = await res.json();
+
+        connDot.className = 'conn-dot connected';
+        connLabel.textContent = 'live';
+
+        if (isFirstRender) {
+            isFirstRender = false;
+        }
+
+        renderState(state);
+        prevState = state;
+        pollCount++;
+
+    } catch (err) {
+        connDot.className = 'conn-dot error';
+        connLabel.textContent = 'disconnected';
+        if (pollCount === 0) {
+            console.error('Initial connection failed:', err);
+        }
+    }
+}
+
+// Start polling
+poll();
+setInterval(poll, POLL_INTERVAL);
+</script>
+
+</body>
+</html>

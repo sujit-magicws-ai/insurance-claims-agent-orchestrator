@@ -39,8 +39,9 @@ def run_agent1_activity(input_data: dict) -> dict:
     Raises:
         Exception: If agent invocation or response parsing fails
     """
-    # Extract instance_id if provided (for logging correlation)
+    # Extract instance_id and persona_name if provided
     instance_id = input_data.pop("_instance_id", None)
+    persona_name = input_data.pop("persona_name", None)
 
     log_prefix = f"[{instance_id}] " if instance_id else ""
     logger.info(f"{log_prefix}Agent1 Activity started for claim: {input_data.get('claim_id')}")
@@ -50,7 +51,7 @@ def run_agent1_activity(input_data: dict) -> dict:
         agent1_input = Agent1Input.model_validate(input_data)
 
         # Invoke Agent1
-        result = invoke_agent1(agent1_input, instance_id=instance_id)
+        result = invoke_agent1(agent1_input, instance_id=instance_id, persona_name=persona_name)
 
         logger.info(
             f"{log_prefix}Agent1 Activity completed. "

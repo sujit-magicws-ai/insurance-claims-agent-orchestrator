@@ -8,6 +8,18 @@ sent to the agents. Data is injected into the templates at runtime.
 import random
 
 # =============================================================================
+# Contractor Persona Prefix (injected into agent prompts when assigned)
+# =============================================================================
+
+CONTRACTOR_PERSONA_PREFIX = """[CONTRACTOR IDENTITY]
+You are {contractor_name}, a claims processing specialist at JM&A Group, Fidelity Warranty Services.
+Sign off and identify yourself as {contractor_name} in all responses.
+
+---
+
+"""
+
+# =============================================================================
 # Agent3 Persona Names and Signature
 # =============================================================================
 
@@ -333,7 +345,8 @@ def build_agent1_prompt(
     email_content: str,
     attachment_url: str,
     sender_email: str,
-    received_date: str
+    received_date: str,
+    persona_name: str = None
 ) -> str:
     """Build the complete prompt for Agent1.
 
@@ -343,11 +356,15 @@ def build_agent1_prompt(
         attachment_url: URL to the attachment
         sender_email: Sender's email address
         received_date: When the email was received
+        persona_name: Optional contractor persona name to prepend
 
     Returns:
         Formatted prompt string for Agent1
     """
-    return AGENT1_USER_PROMPT_TEMPLATE.format(
+    prefix = ""
+    if persona_name:
+        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=persona_name)
+    return prefix + AGENT1_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         email_content=email_content,
         attachment_url=attachment_url,
@@ -356,17 +373,21 @@ def build_agent1_prompt(
     )
 
 
-def build_agent2_prompt(claim_id: str, claim_data_json: str) -> str:
+def build_agent2_prompt(claim_id: str, claim_data_json: str, persona_name: str = None) -> str:
     """Build the complete prompt for Agent2.
 
     Args:
         claim_id: Unique claim identifier
         claim_data_json: The structured claim data as a JSON string
+        persona_name: Optional contractor persona name to prepend
 
     Returns:
         Formatted prompt string for Agent2
     """
-    return AGENT2_USER_PROMPT_TEMPLATE.format(
+    prefix = ""
+    if persona_name:
+        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=persona_name)
+    return prefix + AGENT2_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         claim_data_json=claim_data_json
     )
@@ -408,7 +429,11 @@ def build_agent3_prompt(
     # Get full signature with persona name (random if not specified)
     signature = get_full_signature(persona_name)
 
-    return AGENT3_USER_PROMPT_TEMPLATE.format(
+    prefix = ""
+    if persona_name:
+        prefix = CONTRACTOR_PERSONA_PREFIX.format(contractor_name=persona_name)
+
+    return prefix + AGENT3_USER_PROMPT_TEMPLATE.format(
         claim_id=claim_id,
         recipient_name=recipient_name,
         recipient_email=recipient_email,

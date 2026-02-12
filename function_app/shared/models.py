@@ -237,6 +237,44 @@ class Agent2Output(BaseModel):
 
 
 # =============================================================================
+# AI Contractor Models (Clone Visualizer)
+# =============================================================================
+
+class JobSlot(BaseModel):
+    """A single job slot within a contractor."""
+    claim_id: str = Field(..., description="Claim ID occupying this slot")
+    progress_pct: int = Field(0, ge=0, le=100, description="Job progress 0-100")
+    started_at: str = Field(..., description="ISO timestamp when job was assigned")
+    status: Literal["processing", "completed"] = Field("processing", description="Job status")
+
+
+class ContractorState(BaseModel):
+    """Runtime state of a single AI Contractor for dashboard rendering."""
+    name: str = Field(..., description="Contractor name (Alice, Bob, etc.)")
+    color: str = Field(..., description="Hex color for dashboard display")
+    capacity: int = Field(..., description="Max concurrent job slots")
+    active_jobs: list[JobSlot] = Field(default_factory=list, description="Currently active jobs")
+    slots_used: int = Field(0, description="Number of occupied slots")
+    jobs_completed: int = Field(0, description="Lifetime completed job count")
+    status: Literal["full", "available", "idle"] = Field("idle", description="Current status")
+    is_primary: bool = Field(False, description="True for first contractor (never terminated)")
+
+
+class ContractorPoolState(BaseModel):
+    """Runtime state of a contractor pool for one agent stage."""
+    agent_id: str = Field(..., description="Agent stage identifier")
+    display_name: str = Field(..., description="Human-readable stage name")
+    capacity_per_contractor: int = Field(..., description="Max jobs per contractor")
+    max_contractors: int = Field(..., description="Max contractors in this pool")
+    pending_queue: list[str] = Field(default_factory=list, description="Claim IDs waiting for a slot")
+    pending_count: int = Field(0, description="Number of pending jobs")
+    active_contractors: list[ContractorState] = Field(default_factory=list, description="Active contractor states")
+    contractor_count: int = Field(0, description="Number of active contractors")
+    total_jobs_in_flight: int = Field(0, description="Total jobs across all contractors")
+    total_completed: int = Field(0, description="Total completed across all contractors")
+
+
+# =============================================================================
 # Orchestration Models
 # =============================================================================
 

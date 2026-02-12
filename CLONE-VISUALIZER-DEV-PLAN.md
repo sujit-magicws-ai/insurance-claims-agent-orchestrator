@@ -4,7 +4,23 @@
 
 ---
 
-## Phase 1: Contractor Manager Core Logic
+## Progress Tracker
+
+| Phase | Description | Status | Notes |
+|-------|-------------|--------|-------|
+| 1 | Contractor Manager Core Logic | DONE | All 13+ tests pass |
+| 2 | Contractor State API Endpoints | DONE | /contractors/state and /config working |
+| 3 | Clone Dashboard HTML | DONE | 4-lane layout, polling, event log UI |
+| 4 | Orchestrator Wiring | DONE | assign/release activities, orchestrator wired |
+| 5 | Persona Injection into Agent Prompts | DONE | All code + unit tests pass; integration test pending `func start` |
+| 6 | Progress Simulation + HITL Counter + Event Log | DONE | All code + unit tests pass; integration test pending `func start` |
+| 7 | End-to-End Load Test + Dashboard Polish | DONE | All code complete; integration test pending `func start` |
+
+**Last updated**: 2026-02-11 — ALL 7 PHASES COMPLETE (integration test pending `func start`)
+
+---
+
+## Phase 1: Contractor Manager Core Logic — DONE
 
 **Goal**: Pure Python module with first-fill assignment, job completion, scale-down, and state snapshots. Zero dependency on Durable Functions — testable with a standalone script.
 
@@ -98,7 +114,7 @@ python -m tests.test_contractor_manager
 
 ---
 
-## Phase 2: Contractor State API Endpoints
+## Phase 2: Contractor State API Endpoints — DONE
 
 **Goal**: Expose ContractorManager state over HTTP so any client (browser, Postman, curl) can read it. No dashboard yet — just raw JSON APIs.
 
@@ -182,7 +198,7 @@ curl http://localhost:7071/api/contractors/config
 
 ---
 
-## Phase 3: Clone Dashboard HTML
+## Phase 3: Clone Dashboard HTML — DONE
 
 **Goal**: Build the real-time Clone Visualizer dashboard as a single HTML file. Polls `/api/contractors/state` every 500ms and renders contractor cards with job slots. Testable immediately against the Phase 2 API.
 
@@ -306,7 +322,7 @@ func start
 
 ---
 
-## Phase 4: Orchestrator Wiring — Contractor Assignment
+## Phase 4: Orchestrator Wiring — Contractor Assignment — DONE
 
 **Goal**: Wire the ContractorManager into the Durable Functions orchestrator. When a claim enters an agent stage, it's assigned to a contractor. When the stage completes, the slot is released. The dashboard (Phase 3) now reflects real claim processing.
 
@@ -466,7 +482,7 @@ curl http://localhost:7071/api/contractors/state
 
 ---
 
-## Phase 5: Persona Injection into Agent Prompts
+## Phase 5: Persona Injection into Agent Prompts — DONE
 
 **Goal**: The contractor name assigned in Phase 4 is now injected into the user prompt for each Foundry API call. Agents respond **as** the named contractor. Agent3's email signature uses the contractor name instead of a random persona.
 
@@ -479,6 +495,23 @@ curl http://localhost:7071/api/contractors/state
 | `function_app/activities/agent1_activity.py` | Read `persona_name` from `input_data`, pass to `invoke_agent1()`. |
 | `function_app/activities/agent2_activity.py` | Read `persona_name` from `input_data`, pass to `invoke_agent2()`. |
 | `function_app/activities/agent3_activity.py` | Read `persona_name` from `input_data`, pass to `invoke_email_composer()` as explicit persona instead of random. |
+
+### Phase 5 Sub-task Checklist
+
+- [x] Orchestrator passes `persona_name` to activity inputs (done in Phase 4)
+- [x] Add `CONTRACTOR_PERSONA_PREFIX` constant to `prompts.py`
+- [x] Modify `build_agent1_prompt()` to accept `persona_name` and prepend prefix
+- [x] Modify `build_agent2_prompt()` to accept `persona_name` and prepend prefix
+- [x] Modify `build_agent3_prompt()` to accept `persona_name` and prepend prefix
+- [x] Add `persona_name` param to `invoke_agent1()` in `agent_client.py`
+- [x] Add `persona_name` param to `invoke_agent2()` in `agent_client.py`
+- [x] Update `invoke_email_composer()` to accept explicit `persona_name`
+- [x] Update `agent1_activity.py` to extract and pass `persona_name`
+- [x] Update `agent2_activity.py` to extract and pass `persona_name`
+- [x] Update `agent3_activity.py` to extract and pass `persona_name`
+- [x] Test: Persona injection in all 3 prompt builders (6 unit tests passed)
+- [ ] Test: Mock mode — persona flows through logs (requires `func start`)
+- [ ] Test: Direct `/compose-email` still uses random persona (requires `func start`)
 
 ### Persona Prefix (Added to `prompts.py`)
 
@@ -590,7 +623,7 @@ curl -X POST http://localhost:7071/api/compose-email `
 
 ---
 
-## Phase 6: Progress Simulation + HITL Counter
+## Phase 6: Progress Simulation + HITL Counter — DONE
 
 **Goal**: Jobs in the dashboard show animated progress (not stuck at 0%). HITL lane shows count of claims waiting for human review. Event log captures spawn/terminate events.
 
@@ -601,6 +634,28 @@ curl -X POST http://localhost:7071/api/compose-email `
 | `function_app/shared/contractor_manager.py` | Add `_progress_simulation_thread()` that increments progress based on estimated stage durations. Add HITL counter (`hitl_waiting_count`). Add event log buffer. |
 | `function_app/function_app.py` | Update `submit_estimate` endpoint to decrement HITL counter. Update `claim_orchestrator` to increment HITL counter when entering `awaiting_approval`. |
 | `function_app/static/clone_dashboard.html` | Render event log panel. Animate progress bar transitions. Show HITL waiting count. |
+
+### Phase 6 Sub-task Checklist
+
+- [x] HITL counter methods in `contractor_manager.py` (`increment/decrement_hitl_waiting`)
+- [x] Event log panel UI in `clone_dashboard.html`
+- [x] HITL waiting count display in dashboard
+- [x] Add `ESTIMATED_STAGE_DURATION_SECONDS` constant (classifier=15s, adjudicator=10s, email_composer=8s)
+- [x] Add `ContractorEvent` model and ring buffer (last 50 events, deque maxlen=50)
+- [x] Add `_progress_simulation_loop()` daemon thread (500ms tick, cap at 95%)
+- [x] Wire event log into `/contractors/state` response (`events` key in get_all_state)
+- [x] Orchestrator: increment HITL counter when entering `awaiting_approval` (via update_counter_activity)
+- [x] `submit_estimate` endpoint: decrement HITL counter on approval (via update_counter_activity)
+- [x] Dashboard: smooth progress bar transitions (CSS cubic-bezier 0.6s + complete class)
+- [x] Dashboard: auto-scroll event log with manual scroll lock (scroll detection + click-to-resume)
+- [x] Dashboard: terminate animation (card-exit CSS fadeout)
+- [x] Dashboard: spawn glow animation (green box-shadow on new cards)
+- [x] Dashboard: server-side events replace client-side detection
+- [x] Test: Progress bars animate 0→95% during processing (verified: 10% after 2s for classifier)
+- [x] Test: HITL counter increments/decrements correctly
+- [x] Test: Event log shows spawn/terminate/assign/complete events
+- [x] Test: Ring buffer caps at 50 events
+- [ ] Test: Full integration with `func start` (requires running app)
 
 ### Progress Simulation Design
 
@@ -719,7 +774,7 @@ curl -X POST http://localhost:7071/api/claims/start `
 
 ---
 
-## Phase 7: End-to-End Load Test + Dashboard Polish
+## Phase 7: End-to-End Load Test + Dashboard Polish — DONE
 
 **Goal**: Full integration test with 10+ concurrent claims. Validate first-fill, spawn, scale-down, persona injection, and dashboard visualization all working together. Polish UI details.
 
@@ -742,6 +797,22 @@ curl -X POST http://localhost:7071/api/claims/start `
 | **Contractor color consistency** | Alice always `#2dd4a8`, Bob always `#7c5cfc`, etc. across all lanes |
 | **Responsive layout** | 4-col on desktop, 2-col on tablet, 1-col on mobile |
 | **Full/Available/Idle badges** | Clear status badge on each contractor card with color coding |
+
+### Phase 7 Sub-task Checklist
+
+- [x] Spawn animation — green glow border on new cards (done in Phase 6)
+- [x] Terminate animation — card-exit CSS fadeout (done in Phase 6)
+- [x] Job slot click-through — claim IDs are clickable links to `/api/claims/status/claim-{id}`
+- [x] Stage flow arrows — 4 arrow divs between lanes (Classifier→HITL→Adjudicator→Email Composer→Sender)
+- [x] Auto-scroll event log with manual scroll lock (done in Phase 6)
+- [x] Contractor color consistency — color from contractor.color field (done in Phase 3)
+- [x] Responsive layout — 9-col desktop, 2-col tablet (1200px), 1-col mobile (768px)
+- [x] Full/Available/Idle badges — color-coded status badges (done in Phase 3)
+- [x] Contractor info in `list_claims` response — `contractor` field from custom_status
+- [x] Load test script — `test_clone_load.py` with --count, --approve, --state modes
+- [x] Smooth progress bar CSS transitions — cubic-bezier 0.6s (done in Phase 6)
+- [x] Server-side event log — events from API replace client-side detection (done in Phase 6)
+- [ ] End-to-end integration test with `func start` (manual — requires running app)
 
 ### Load Test Script (`function_app/tests/test_clone_load.py`)
 

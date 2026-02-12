@@ -1,0 +1,545 @@
+{
+	"info": {
+		"name": "HITL Claims Orchestration",
+		"description": "Manual testing collection for the Azure Durable Functions HITL Claims Orchestration.\n\nFlow: Start Claim → Poll Status → Submit Estimate → Poll until Completed\n\nPrerequisites:\n- Azurite running (docker start azurite)\n- DTS emulator running (docker start dts-emulator)\n- func start running on port 7071",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:7071/api",
+			"type": "string"
+		},
+		{
+			"key": "claimId",
+			"value": "TEST-001",
+			"type": "string"
+		},
+		{
+			"key": "instanceId",
+			"value": "claim-TEST-001",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0 - Health & Config",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Verify the function app is running. Should return {\"status\": \"healthy\"}."
+					}
+				},
+				{
+					"name": "Get Contractor Config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/contractors/config",
+							"host": ["{{baseUrl}}"],
+							"path": ["contractors", "config"]
+						},
+						"description": "Returns contractor pool configuration (capacity, max contractors, names) for each agent stage."
+					}
+				},
+				{
+					"name": "Get Contractor State",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/contractors/state",
+							"host": ["{{baseUrl}}"],
+							"path": ["contractors", "state"]
+						},
+						"description": "Returns the full contractor workforce state. The Clone Visualizer dashboard polls this endpoint."
+					}
+				}
+			],
+			"description": "Health checks and configuration endpoints. Run these first to verify everything is up."
+		},
+		{
+			"name": "1 - Start Claim",
+			"item": [
+				{
+					"name": "Start Claim - Basic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 202) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('instanceId', jsonData.instance_id);",
+									"    pm.collectionVariables.set('claimId', jsonData.claim_id);",
+									"    console.log('Instance ID saved: ' + jsonData.instance_id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"claim_id\": \"TEST-001\",\n    \"email_content\": \"Hi Claims Team,\\n\\nI am writing to submit a claim for my vehicle. I was involved in a collision on January 15, 2026. My 2022 Honda Civic (VIN: 1HGBH41JXMN109186) sustained significant front-end damage including bumper, hood, and radiator.\\n\\nMy contract number is VSC-2024-88421. Current mileage is 34,500 miles.\\n\\nThe vehicle is currently at AutoFix Pro, 123 Main St, Dallas TX. Their estimate is $4,750 for parts and labor.\\n\\nPlease process this claim as soon as possible.\\n\\nThank you,\\nJohn Smith\\njohn.smith@email.com\\n(555) 123-4567\",\n    \"attachment_url\": \"https://storage.blob.core.windows.net/claims/test-claim-form.pdf\",\n    \"sender_email\": \"john.smith@email.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/claims/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "start"]
+						},
+						"description": "Start a new claim orchestration. Returns 202 with instance_id.\n\nThe test script auto-saves instanceId and claimId to collection variables."
+					}
+				},
+				{
+					"name": "Start Claim - Minimal",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 202) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('instanceId', jsonData.instance_id);",
+									"    pm.collectionVariables.set('claimId', jsonData.claim_id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"claim_id\": \"TEST-002\",\n    \"email_content\": \"Hi, my transmission failed on my 2020 Ford F-150. Policy: GAP-2025-11234. Need urgent help.\",\n    \"attachment_url\": \"\",\n    \"sender_email\": \"jane.doe@email.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/claims/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "start"]
+						},
+						"description": "Start a claim with minimal info (no attachment). Tests Agent1 extraction with sparse data."
+					}
+				},
+				{
+					"name": "Start Claim - Tire & Wheel",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 202) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('instanceId', jsonData.instance_id);",
+									"    pm.collectionVariables.set('claimId', jsonData.claim_id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"claim_id\": \"TEST-003\",\n    \"email_content\": \"Dear Claims,\\n\\nI hit a pothole on I-35 and damaged two tires and one rim on my 2023 Toyota RAV4.\\n\\nContract: TW-2025-55678\\nVIN: JTMRWRFV5ND123456\\nMileage: 18,200\\n\\nDiscount Tire quoted $890 for replacement.\\n\\nThanks,\\nMike Johnson\\n(555) 987-6543\",\n    \"attachment_url\": \"https://storage.blob.core.windows.net/claims/tire-damage-photos.zip\",\n    \"sender_email\": \"mike.johnson@email.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/claims/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "start"]
+						},
+						"description": "Start a Tire & Wheel claim to test different classification paths."
+					}
+				}
+			],
+			"description": "Start new claim orchestrations. Each request auto-saves the instanceId for use in subsequent requests."
+		},
+		{
+			"name": "2 - Check Status",
+			"item": [
+				{
+					"name": "Get Claim Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/claims/status/{{instanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "status", "{{instanceId}}"]
+						},
+						"description": "Check the current status of a claim orchestration.\n\nKey fields in response:\n- runtime_status: Running, Completed, Failed\n- custom_status.step: agent1_processing, awaiting_approval, agent2_processing, etc.\n- output: Final result (only when Completed)\n\nPoll this until custom_status.step = 'awaiting_approval' before submitting estimate."
+					}
+				},
+				{
+					"name": "List All Claims",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/claims",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims"]
+						},
+						"description": "List all claim orchestrations with status info."
+					}
+				},
+				{
+					"name": "List Claims - Running Only",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/claims?status=Running",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims"],
+							"query": [
+								{
+									"key": "status",
+									"value": "Running"
+								}
+							]
+						},
+						"description": "List only claims that are currently running (awaiting approval or being processed)."
+					}
+				},
+				{
+					"name": "List Claims - Completed Only",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/claims?status=Completed",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims"],
+							"query": [
+								{
+									"key": "status",
+									"value": "Completed"
+								}
+							]
+						},
+						"description": "List only completed claim orchestrations."
+					}
+				}
+			],
+			"description": "Check orchestration status. Poll 'Get Claim Status' until step = 'awaiting_approval'."
+		},
+		{
+			"name": "3 - Submit Estimate (HITL)",
+			"item": [
+				{
+					"name": "Approve - Full Estimate Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"decision\": \"approved\",\n    \"reviewer\": \"estimator@company.com\",\n    \"comments\": \"Verified damage photos match description. Estimate is reasonable.\",\n    \"claim_data\": {\n        \"claimant\": {\n            \"name\": \"John Smith\",\n            \"email\": \"john.smith@email.com\",\n            \"phone\": \"(555) 123-4567\",\n            \"address\": \"456 Oak Ave, Dallas, TX 75201\"\n        },\n        \"contract\": {\n            \"contract_number\": \"VSC-2024-88421\",\n            \"coverage_type\": \"VSC - Comprehensive\",\n            \"effective_date\": \"2024-01-15\",\n            \"expiration_date\": \"2027-01-15\",\n            \"deductible\": 100.00,\n            \"max_coverage\": 50000.00\n        },\n        \"vehicle\": {\n            \"year\": 2022,\n            \"make\": \"Honda\",\n            \"model\": \"Civic\",\n            \"vin\": \"1HGBH41JXMN109186\",\n            \"current_odometer\": 34500,\n            \"purchase_odometer\": 12000\n        },\n        \"repair\": {\n            \"facility_name\": \"AutoFix Pro\",\n            \"facility_address\": \"123 Main St, Dallas, TX\",\n            \"facility_authorized\": true,\n            \"date_of_loss\": \"2026-01-15\",\n            \"diagnosis\": \"Front-end collision damage - bumper, hood, and radiator replacement needed\",\n            \"parts_cost\": 2800.00,\n            \"labor_cost\": 1950.00,\n            \"total_estimate\": 4750.00\n        },\n        \"documents\": {\n            \"claim_form\": true,\n            \"damage_photos\": true,\n            \"repair_estimate\": true,\n            \"police_report\": false\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/claims/approve/{{instanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "approve", "{{instanceId}}"]
+						},
+						"description": "Submit a full estimate with all claim data. This is the primary HITL approval step.\n\nIMPORTANT: Only works when claim status step = 'awaiting_approval'.\n\nAfter this, the orchestration continues to Agent2 (adjudication) → Agent3 (email) → Send Email."
+					}
+				},
+				{
+					"name": "Approve - Minimal",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reviewer\": \"quick-reviewer@company.com\",\n    \"comments\": \"Approved for processing\",\n    \"claim_amounts\": {\n        \"total_parts_cost\": 2800.00,\n        \"total_labor_cost\": 1950.00,\n        \"total_estimate\": 4750.00,\n        \"deductible\": 100.00\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/claims/approve/{{instanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "approve", "{{instanceId}}"]
+						},
+						"description": "Submit a minimal approval with just amounts (no full claim_data). Decision defaults to 'approved'."
+					}
+				},
+				{
+					"name": "Reject Claim",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"decision\": \"rejected\",\n    \"reviewer\": \"reviewer@company.com\",\n    \"comments\": \"Insufficient documentation. Missing police report and damage photos do not match description.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/claims/approve/{{instanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "approve", "{{instanceId}}"]
+						},
+						"description": "Reject a claim. The orchestration will end immediately without calling Agent2 or Agent3."
+					}
+				}
+			],
+			"description": "Submit the manual estimate (HITL step). Only works when the claim is at step 'awaiting_approval'.\n\nUse 'Get Claim Status' to verify the step before submitting."
+		},
+		{
+			"name": "4 - Verify Completion",
+			"item": [
+				{
+					"name": "Get Final Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/claims/status/{{instanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["claims", "status", "{{instanceId}}"]
+						},
+						"description": "After approval, poll this until runtime_status = 'Completed'.\n\nThe output field will contain the full orchestration result including:\n- agent1_output: Classification result\n- approval_decision: What was submitted\n- agent2_output: Adjudication decision (APPROVED/DENIED/MANUAL_REVIEW)\n- agent3_output: Composed email\n- email_send_result: Whether email was sent\n- stage_timestamps: Timeline of all stages"
+					}
+				},
+				{
+					"name": "Get Contractor State (Final)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/contractors/state",
+							"host": ["{{baseUrl}}"],
+							"path": ["contractors", "state"]
+						},
+						"description": "Check contractor state after completion. All contractors should be released and jobs_completed incremented."
+					}
+				}
+			],
+			"description": "Verify the orchestration completed successfully after the HITL step."
+		},
+		{
+			"name": "5 - Standalone APIs",
+			"item": [
+				{
+					"name": "Compose Email (Direct API)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"claim_id\": \"TEST-EMAIL-001\",\n    \"recipient_name\": \"John Smith\",\n    \"recipient_email\": \"john.smith@email.com\",\n    \"email_purpose\": \"Claim Approval Notification\",\n    \"outcome_summary\": \"Your vehicle service claim VSC-2024-88421 for your 2022 Honda Civic has been approved. The approved amount is $4,650.00 after a $100.00 deductible. Repairs may proceed at AutoFix Pro.\",\n    \"additional_context\": \"Claimant has been a policyholder for 2 years with no prior claims.\",\n    \"config\": {\n        \"tone\": \"formal\",\n        \"length\": \"standard\",\n        \"empathy\": \"warm\",\n        \"call_to_action\": \"soft\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/compose-email",
+							"host": ["{{baseUrl}}"],
+							"path": ["compose-email"]
+						},
+						"description": "Test the Email Composer Agent (Agent3) directly without going through the full orchestration. Useful for testing email templates and tone settings."
+					}
+				}
+			],
+			"description": "Standalone API endpoints that can be tested independently of the orchestration flow."
+		},
+		{
+			"name": "6 - Dashboards (Browser)",
+			"item": [
+				{
+					"name": "Claims Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/dashboard",
+							"host": ["{{baseUrl}}"],
+							"path": ["dashboard"]
+						},
+						"description": "Open in browser: http://localhost:7071/api/dashboard\n\nShows all claims with status, classification, and actions."
+					}
+				},
+				{
+					"name": "Clone Visualizer Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clone-dashboard",
+							"host": ["{{baseUrl}}"],
+							"path": ["clone-dashboard"]
+						},
+						"description": "Open in browser: http://localhost:7071/api/clone-dashboard\n\nShows AI contractor pools with real-time job assignment visualization."
+					}
+				},
+				{
+					"name": "Review UI",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/review/{{instanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["review", "{{instanceId}}"]
+						},
+						"description": "Open in browser: http://localhost:7071/api/review/claim-TEST-001\n\nThe HITL review form pre-filled with Agent1 output. Reviewers enter estimate data here."
+					}
+				},
+				{
+					"name": "Email Composer Demo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/email-composer-demo",
+							"host": ["{{baseUrl}}"],
+							"path": ["email-composer-demo"]
+						},
+						"description": "Open in browser: http://localhost:7071/api/email-composer-demo\n\nInteractive demo for testing the Email Composer Agent with different settings."
+					}
+				}
+			],
+			"description": "HTML pages - best opened in a browser rather than Postman. These are here for reference."
+		},
+		{
+			"name": "7 - Durable Task (Direct API)",
+			"item": [
+				{
+					"name": "Get Instance Status (DT API)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:7071/runtime/webhooks/durabletask/instances/{{instanceId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "7071",
+							"path": ["runtime", "webhooks", "durabletask", "instances", "{{instanceId}}"]
+						},
+						"description": "Query the Durable Task framework directly for raw orchestration state. Useful for debugging."
+					}
+				},
+				{
+					"name": "Raise Event Directly (DT API)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"decision\": \"approved\",\n    \"reviewer\": \"direct-api@test.com\",\n    \"comments\": \"Raised via DT API directly\",\n    \"claim_amounts\": {\n        \"total_parts_cost\": 1500.00,\n        \"total_labor_cost\": 800.00,\n        \"total_estimate\": 2300.00,\n        \"deductible\": 50.00\n    }\n}"
+						},
+						"url": {
+							"raw": "http://localhost:7071/runtime/webhooks/durabletask/instances/{{instanceId}}/raiseEvent/ApprovalDecision",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "7071",
+							"path": ["runtime", "webhooks", "durabletask", "instances", "{{instanceId}}", "raiseEvent", "ApprovalDecision"]
+						},
+						"description": "Raise the ApprovalDecision event directly via the Durable Task HTTP API. Bypasses the /claims/approve endpoint validation. Useful for debugging stuck orchestrations."
+					}
+				},
+				{
+					"name": "List All Instances (DT API)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:7071/runtime/webhooks/durabletask/instances",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "7071",
+							"path": ["runtime", "webhooks", "durabletask", "instances"]
+						},
+						"description": "List all Durable Task orchestration instances. Returns raw framework data."
+					}
+				},
+				{
+					"name": "Terminate Instance (DT API)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:7071/runtime/webhooks/durabletask/instances/{{instanceId}}/terminate?reason=manual_termination",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "7071",
+							"path": ["runtime", "webhooks", "durabletask", "instances", "{{instanceId}}", "terminate"],
+							"query": [
+								{
+									"key": "reason",
+									"value": "manual_termination"
+								}
+							]
+						},
+						"description": "Force-terminate a stuck orchestration. Use with caution."
+					}
+				},
+				{
+					"name": "Purge Instance (DT API)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:7071/runtime/webhooks/durabletask/instances/{{instanceId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "7071",
+							"path": ["runtime", "webhooks", "durabletask", "instances", "{{instanceId}}"]
+						},
+						"description": "Purge a completed/terminated/failed orchestration instance from storage. Allows re-running with the same claim_id."
+					}
+				}
+			],
+			"description": "Direct Durable Task Framework HTTP APIs. Useful for debugging and managing orchestration instances."
+		}
+	]
+}

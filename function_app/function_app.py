@@ -116,6 +116,118 @@ async def health_check(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
+# =============================================================================
+# Contractor State API (Clone Visualizer)
+# =============================================================================
+
+@app.route(route="contractors/state", methods=["GET"])
+async def get_contractor_state(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Return full contractor workforce state for dashboard polling.
+
+    Response includes all 3 agent pools, HITL counter, and global stats.
+    The Clone Visualizer dashboard polls this every 500ms.
+
+    Returns:
+        200: JSON with stages, hitl, and global counters
+    """
+    try:
+        from shared.contractor_manager import ContractorManager
+        manager = ContractorManager()
+        state = manager.get_all_state()
+
+        return func.HttpResponse(
+            body=json.dumps(state, default=str),
+            status_code=200,
+            mimetype="application/json"
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting contractor state: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": f"Internal error: {str(e)}"}),
+            status_code=500,
+            mimetype="application/json"
+        )
+
+
+@app.route(route="contractors/config", methods=["GET"])
+async def get_contractor_config(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Return contractor pool configuration (capacity, max, names per agent).
+
+    Returns:
+        200: JSON with pool configs for each agent stage
+    """
+    try:
+        from shared.contractor_manager import ContractorManager
+        manager = ContractorManager()
+        config = {}
+
+        for agent_id, pool in manager.pools.items():
+            config[agent_id] = {
+                "agent_id": pool.agent_id,
+                "display_name": pool.display_name,
+                "capacity_per_contractor": pool.capacity,
+                "max_contractors": pool.max_contractors,
+                "contractor_names": [d["name"] for d in pool.contractor_defs],
+                "contractor_colors": [d["color"] for d in pool.contractor_defs],
+            }
+
+        return func.HttpResponse(
+            body=json.dumps(config),
+            status_code=200,
+            mimetype="application/json"
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting contractor config: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({"error": f"Internal error: {str(e)}"}),
+            status_code=500,
+            mimetype="application/json"
+        )
+
+
+# =============================================================================
+# Dashboard & Static Pages
+# =============================================================================
+
+@app.route(route="clone-dashboard", methods=["GET"])
+async def serve_clone_dashboard(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Serve the Clone Visualizer AI Contractor Dashboard.
+
+    Returns:
+        200: HTML dashboard page
+        404: Static file not found
+    """
+    try:
+        static_dir = Path(__file__).parent / "static"
+        html_path = static_dir / "clone_dashboard.html"
+
+        if not html_path.exists():
+            return func.HttpResponse(
+                "Clone Dashboard not found",
+                status_code=404
+            )
+
+        html_content = html_path.read_text(encoding="utf-8")
+
+        return func.HttpResponse(
+            body=html_content,
+            status_code=200,
+            mimetype="text/html"
+        )
+
+    except Exception as e:
+        logger.error(f"Error serving clone dashboard: {str(e)}")
+        return func.HttpResponse(
+            f"Error loading clone dashboard: {str(e)}",
+            status_code=500
+        )
+
+
 @app.route(route="dashboard", methods=["GET"])
 async def serve_dashboard(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -419,12 +531,13 @@ async def start_claim_orchestration(req: func.HttpRequest, client) -> func.HttpR
 
         # Check if orchestration already exists
         existing = await client.get_status(instance_id)
-        if existing and existing.runtime_status.name in ["Running", "Pending"]:
+        existing_rs = (existing.runtime_status.name if hasattr(existing.runtime_status, 'name') else str(existing.runtime_status)) if existing else None
+        if existing and existing_rs in ["Running", "Pending"]:
             return func.HttpResponse(
                 json.dumps({
                     "error": "Orchestration already exists",
                     "instance_id": instance_id,
-                    "status": existing.runtime_status.name
+                    "status": existing_rs
                 }),
                 status_code=409,
                 mimetype="application/json"
@@ -436,6 +549,10 @@ async def start_claim_orchestration(req: func.HttpRequest, client) -> func.HttpR
             instance_id=instance_id,
             client_input=claim_request.model_dump(mode="json")
         )
+
+        # Track email received for clone dashboard
+        from shared.contractor_manager import ContractorManager
+        ContractorManager().increment_email_received()
 
         logger.info(f"Started orchestration {instance_id} for claim {claim_request.claim_id}")
 
@@ -536,13 +653,15 @@ async def submit_estimate(req: func.HttpRequest, client) -> func.HttpResponse:
             )
 
         # Check if orchestration is running and waiting for approval
-        if status.runtime_status.name != "Running":
+        rs = status.runtime_status
+        rs_name = rs.name if hasattr(rs, 'name') else str(rs)
+        if rs_name != "Running":
             return func.HttpResponse(
                 json.dumps({
                     "success": False,
                     "error": "orchestration_not_running",
-                    "message": f"Orchestration is {status.runtime_status.name}, not waiting for approval",
-                    "runtime_status": status.runtime_status.name
+                    "message": f"Orchestration is {rs_name}, not waiting for approval",
+                    "runtime_status": rs_name
                 }),
                 status_code=409,
                 mimetype="application/json"
@@ -550,13 +669,19 @@ async def submit_estimate(req: func.HttpRequest, client) -> func.HttpResponse:
 
         # Check custom status to verify it's waiting for approval
         custom_status = status.custom_status or {}
-        if custom_status.get("step") != "awaiting_approval":
+        if isinstance(custom_status, str):
+            try:
+                custom_status = json.loads(custom_status)
+            except (json.JSONDecodeError, TypeError):
+                custom_status = {}
+        current_step = custom_status.get("step") if isinstance(custom_status, dict) else None
+        if current_step != "awaiting_approval":
             return func.HttpResponse(
                 json.dumps({
                     "success": False,
                     "error": "not_awaiting_approval",
-                    "message": f"Orchestration is at step '{custom_status.get('step')}', not awaiting_approval",
-                    "current_step": custom_status.get("step")
+                    "message": f"Orchestration is at step '{current_step}', not awaiting_approval",
+                    "current_step": current_step
                 }),
                 status_code=409,
                 mimetype="application/json"
@@ -614,30 +739,57 @@ async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
         200: JSON array of claims with status info
     """
     try:
-        # Get optional status filter from query params
+        # Get optional status filter and limit from query params
         status_filter = req.params.get("status")
+        limit = int(req.params.get("limit", "20"))
 
-        # Query all orchestration instances and filter by prefix
-        # The SDK's get_status_by returns a list of DurableOrchestrationStatus
-        all_instances = await client.get_status_by()
+        # Use the Durable Task HTTP API directly — the Python SDK's get_status_by()
+        # is unreliable on the DTS emulator (omits recently completed/running instances).
+        import urllib.request
+        import urllib.parse
+        dt_base = "http://localhost:7071/runtime/webhooks/durabletask/instances"
+        dt_params = urllib.parse.urlencode({"instanceIdPrefix": "claim-", "top": "500", "taskHub": "testhubname"})
+        dt_url = f"{dt_base}?{dt_params}"
+        with urllib.request.urlopen(dt_url, timeout=15) as dt_resp:
+            dt_data = json.loads(dt_resp.read().decode())
 
-        # Filter to only claim instances (start with "claim-")
-        instances = [inst for inst in all_instances if inst.instance_id.startswith("claim-")]
+        # Convert raw DT API response to instance-like dicts
+        instances = []
+        for item in dt_data:
+            class _Inst:
+                pass
+            inst = _Inst()
+            inst.instance_id = item.get("instanceId", "")
+            inst.runtime_status = item.get("runtimeStatus", "Unknown")
+            inst.custom_status = item.get("customStatus")
+            inst.created_time = item.get("createdTime")
+            inst.last_updated_time = item.get("lastUpdatedTime")
+            inst.output = item.get("output")
+            instances.append(inst)
 
         claims = []
         for instance in instances:
+            # runtime_status may be an enum or a string depending on storage backend
+            rs = instance.runtime_status
+            runtime_status = rs.name if hasattr(rs, 'name') else str(rs)
+
             # Apply status filter if provided
-            if status_filter and instance.runtime_status.name.lower() != status_filter.lower():
+            if status_filter and runtime_status.lower() != status_filter.lower():
                 continue
 
             # Extract claim_id from instance_id (remove "claim-" prefix)
             claim_id = instance.instance_id.replace("claim-", "", 1)
 
-            # Get custom status for step info
+            # Get custom status — may be dict, JSON string, or None
             custom_status = instance.custom_status or {}
+            if isinstance(custom_status, str):
+                try:
+                    custom_status = json.loads(custom_status)
+                except (json.JSONDecodeError, TypeError):
+                    custom_status = {}
 
             # Map internal step names to display names
-            step = custom_status.get("step") or "unknown"
+            step = (custom_status.get("step") or "unknown") if isinstance(custom_status, dict) else "unknown"
             display_status = {
                 "agent1_processing": "Classifier Agent Activated",
                 "sending_notification": "Classifier Agent Activated",
@@ -651,7 +803,6 @@ async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
             }.get(step, step.replace("_", " ").title())
 
             # Determine final display status based on runtime status
-            runtime_status = instance.runtime_status.name
             if runtime_status == "Completed":
                 # Check output for final status
                 output = instance.output or {}
@@ -675,16 +826,28 @@ async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
             elif runtime_status == "Terminated":
                 display_status = "Terminated"
 
+            # Safely convert datetime (may be datetime object or string depending on storage backend)
+            def safe_isoformat(dt):
+                if dt is None:
+                    return None
+                if isinstance(dt, str):
+                    return dt
+                try:
+                    return dt.isoformat()
+                except Exception:
+                    return str(dt)
+
             claim_info = {
                 "claim_id": claim_id,
                 "instance_id": instance.instance_id,
                 "runtime_status": runtime_status,
                 "display_status": display_status,
                 "step": step,
-                "created_time": instance.created_time.isoformat() if instance.created_time else None,
-                "last_updated_time": instance.last_updated_time.isoformat() if instance.last_updated_time else None,
+                "created_time": safe_isoformat(instance.created_time),
+                "last_updated_time": safe_isoformat(instance.last_updated_time),
                 "classification": custom_status.get("classification"),
-                "confidence_score": custom_status.get("confidence_score")
+                "confidence_score": custom_status.get("confidence_score"),
+                "contractor": custom_status.get("contractor"),
             }
 
             claims.append(claim_info)
@@ -692,21 +855,28 @@ async def list_claims(req: func.HttpRequest, client) -> func.HttpResponse:
         # Sort by created_time descending (newest first)
         claims.sort(key=lambda x: x.get("created_time") or "", reverse=True)
 
-        logger.info(f"Listed {len(claims)} claims")
+        total_count = len(claims)
+        claims = claims[:limit]
 
-        return func.HttpResponse(
-            json.dumps({"claims": claims, "count": len(claims)}),
+        logger.info(f"Listed {len(claims)} of {total_count} claims (limit={limit})")
+
+        resp = func.HttpResponse(
+            json.dumps({"claims": claims, "count": len(claims), "total_count": total_count}, default=str),
             status_code=200,
             mimetype="application/json"
         )
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
 
     except Exception as e:
         logger.error(f"Error listing claims: {str(e)}")
-        return func.HttpResponse(
+        resp = func.HttpResponse(
             json.dumps({"error": f"Internal error: {str(e)}"}),
             status_code=500,
             mimetype="application/json"
         )
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
 
 
 @app.route(route="claims/status/{instance_id}", methods=["GET"])
@@ -735,17 +905,34 @@ async def get_claim_status(req: func.HttpRequest, client) -> func.HttpResponse:
             )
 
         # Build response with relevant status information
+        rs = status.runtime_status
+        rs_name = rs.name if hasattr(rs, 'name') else str(rs)
+
+        # Safely convert datetime
+        def safe_iso(dt):
+            if dt is None:
+                return None
+            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+
+        # custom_status may be JSON string or dict
+        cs = status.custom_status or {}
+        if isinstance(cs, str):
+            try:
+                cs = json.loads(cs)
+            except (json.JSONDecodeError, TypeError):
+                cs = {}
+
         response = {
             "instance_id": instance_id,
-            "runtime_status": status.runtime_status.name,
-            "custom_status": status.custom_status,
-            "created_time": status.created_time.isoformat() if status.created_time else None,
-            "last_updated_time": status.last_updated_time.isoformat() if status.last_updated_time else None,
+            "runtime_status": rs_name,
+            "custom_status": cs,
+            "created_time": safe_iso(status.created_time),
+            "last_updated_time": safe_iso(status.last_updated_time),
             "output": status.output
         }
 
         # Add approval URL if waiting for approval
-        if status.custom_status and status.custom_status.get("step") == "awaiting_approval":
+        if isinstance(cs, dict) and cs.get("step") == "awaiting_approval":
             base_url = req.url.split("/api/")[0]
             response["approval_url"] = f"{base_url}/api/claims/approve/{instance_id}"
             response["review_url"] = f"{base_url}/api/claims/review/{instance_id}"
@@ -841,9 +1028,10 @@ async def servicebus_claim_trigger(message: func.ServiceBusMessage, client) -> N
 
         # Check if orchestration already exists
         existing = await client.get_status(instance_id)
-        if existing and existing.runtime_status.name in ["Running", "Pending"]:
+        existing_rs = (existing.runtime_status.name if hasattr(existing.runtime_status, 'name') else str(existing.runtime_status)) if existing else None
+        if existing and existing_rs in ["Running", "Pending"]:
             logger.warning(
-                f"Orchestration {instance_id} already exists with status {existing.runtime_status.name}. "
+                f"Orchestration {instance_id} already exists with status {existing_rs}. "
                 f"Skipping duplicate message."
             )
             return  # Message acknowledged, not reprocessed
@@ -854,6 +1042,10 @@ async def servicebus_claim_trigger(message: func.ServiceBusMessage, client) -> N
             instance_id=instance_id,
             client_input=claim_request.model_dump(mode="json")
         )
+
+        # Track email received for clone dashboard
+        from shared.contractor_manager import ContractorManager
+        ContractorManager().increment_email_received()
 
         logger.info(
             f"Started orchestration {instance_id} for claim {claim_request.claim_id} "
@@ -908,11 +1100,17 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     # =========================================================================
     # Step 1: Agent1 Classification
     # =========================================================================
+    # Assign to classifier contractor pool
+    assign1 = yield context.call_activity("assign_contractor_activity",
+        {"agent_id": "classifier", "claim_id": claim_id})
+    classifier_contractor = assign1["contractor_name"]
+
     stage_timestamps["classifier_started"] = context.current_utc_datetime.isoformat()
     context.set_custom_status({
         "step": "agent1_processing",
         "claim_id": claim_id,
-        "message": "Classifying claim with Claim Classifier Agent...",
+        "contractor": classifier_contractor,
+        "message": f"Classifying claim with {classifier_contractor}...",
         "stage_timestamps": stage_timestamps
     })
 
@@ -922,14 +1120,19 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
         "email_content": input_data.get("email_content"),
         "attachment_url": input_data.get("attachment_url"),
         "sender_email": input_data.get("sender_email"),
+        "persona_name": classifier_contractor,
         "_instance_id": instance_id
     }
 
     # Call Agent1 Activity
     agent1_result = yield context.call_activity("agent1_activity", agent1_input)
 
+    # Release from classifier contractor pool
+    yield context.call_activity("release_contractor_activity",
+        {"agent_id": "classifier", "claim_id": claim_id})
+
     if not context.is_replaying:
-        logger.info(f"[{instance_id}] Agent1 completed - Type: {agent1_result.get('classification', {}).get('claim_type')}")
+        logger.info(f"[{instance_id}] Agent1 completed by {classifier_contractor} - Type: {agent1_result.get('classification', {}).get('claim_type')}")
 
     # =========================================================================
     # Step 2: Send Notification for Human Approval
@@ -963,6 +1166,10 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     # =========================================================================
     # Step 3: Wait for Human Approval (with timeout)
     # =========================================================================
+    # Increment HITL waiting counter
+    yield context.call_activity("update_counter_activity",
+        {"counter": "hitl", "action": "increment"})
+
     stage_timestamps["awaiting_started"] = context.current_utc_datetime.isoformat()
     context.set_custom_status({
         "step": "awaiting_approval",
@@ -999,7 +1206,10 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     send_email_result = None
 
     if winner == timeout_task:
-        # Timeout occurred
+        # Timeout occurred — decrement HITL counter
+        yield context.call_activity("update_counter_activity",
+            {"counter": "hitl", "action": "decrement"})
+
         if not context.is_replaying:
             logger.warning(f"[{instance_id}] Approval timed out after {APPROVAL_TIMEOUT_HOURS} hours")
 
@@ -1016,6 +1226,10 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
     else:
         # Cancel the timeout timer
         timeout_task.cancel()
+
+        # Decrement HITL counter (approval or rejection received)
+        yield context.call_activity("update_counter_activity",
+            {"counter": "hitl", "action": "decrement"})
 
         # Get approval decision (may come as string or dict)
         approval_decision = approval_task.result
@@ -1047,13 +1261,19 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
             # =========================================================================
             # Step 5: Call Agent2 for Adjudication
             # =========================================================================
+            # Assign to adjudicator contractor pool
+            assign2 = yield context.call_activity("assign_contractor_activity",
+                {"agent_id": "adjudicator", "claim_id": claim_id})
+            adjudicator_contractor = assign2["contractor_name"]
+
             stage_timestamps["approval_received"] = approval_decision.get("timestamp") or context.current_utc_datetime.isoformat()
             stage_timestamps["adjudicator_started"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
                 "step": "agent2_processing",
                 "claim_id": claim_id,
+                "contractor": adjudicator_contractor,
                 "reviewer": approval_decision.get("reviewer"),
-                "message": "Processing claim with Claim Adjudicator Agent...",
+                "message": f"Processing claim with {adjudicator_contractor}...",
                 "stage_timestamps": stage_timestamps
             })
 
@@ -1062,29 +1282,40 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
                 "claim_id": claim_id,
                 "agent1_output": agent1_result,
                 "approval_decision": approval_decision,
+                "persona_name": adjudicator_contractor,
                 "_instance_id": instance_id
             }
 
             # Call Agent2 Activity
             agent2_activity_result = yield context.call_activity("agent2_activity", agent2_activity_input)
 
+            # Release from adjudicator contractor pool
+            yield context.call_activity("release_contractor_activity",
+                {"agent_id": "adjudicator", "claim_id": claim_id})
+
             agent2_input = agent2_activity_result.get("agent2_input")
             agent2_output = agent2_activity_result.get("agent2_output")
 
             if not context.is_replaying:
-                logger.info(f"[{instance_id}] Agent2 completed - Decision: {agent2_output.get('decision')}")
+                logger.info(f"[{instance_id}] Agent2 completed by {adjudicator_contractor} - Decision: {agent2_output.get('decision')}")
 
             stage_timestamps["adjudicator_completed"] = context.current_utc_datetime.isoformat()
 
             # =========================================================================
             # Step 6: Call Agent3 for Email Composition
             # =========================================================================
+            # Assign to email_composer contractor pool
+            assign3 = yield context.call_activity("assign_contractor_activity",
+                {"agent_id": "email_composer", "claim_id": claim_id})
+            email_composer_contractor = assign3["contractor_name"]
+
             stage_timestamps["email_composer_started"] = context.current_utc_datetime.isoformat()
             context.set_custom_status({
                 "step": "agent3_processing",
                 "claim_id": claim_id,
+                "contractor": email_composer_contractor,
                 "decision": agent2_output.get("decision"),
-                "message": "Composing notification email...",
+                "message": f"Composing email with {email_composer_contractor}...",
                 "stage_timestamps": stage_timestamps
             })
 
@@ -1093,18 +1324,23 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
                 "claim_id": claim_id,
                 "agent1_output": agent1_result,
                 "agent2_output": agent2_output,
+                "persona_name": email_composer_contractor,
                 "_instance_id": instance_id
             }
 
             # Call Agent3 Activity
             agent3_activity_result = yield context.call_activity("agent3_activity", agent3_activity_input)
 
+            # Release from email_composer contractor pool
+            yield context.call_activity("release_contractor_activity",
+                {"agent_id": "email_composer", "claim_id": claim_id})
+
             agent3_input = agent3_activity_result.get("agent3_input")
             agent3_output = agent3_activity_result.get("agent3_output")
 
             if not context.is_replaying:
                 if agent3_output:
-                    logger.info(f"[{instance_id}] Agent3 completed - Subject: {agent3_output.get('email_subject')}")
+                    logger.info(f"[{instance_id}] Agent3 completed by {email_composer_contractor} - Subject: {agent3_output.get('email_subject')}")
                 else:
                     logger.warning(f"[{instance_id}] Agent3 failed - {agent3_activity_result.get('error')}")
 
@@ -1115,6 +1351,10 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
             # =========================================================================
             send_email_result = None
             if agent3_output:
+                # Increment email sender counter
+                yield context.call_activity("update_counter_activity",
+                    {"counter": "email_sender", "action": "increment"})
+
                 stage_timestamps["email_sending_started"] = context.current_utc_datetime.isoformat()
                 context.set_custom_status({
                     "step": "sending_email",
@@ -1138,6 +1378,10 @@ def claim_orchestrator(context: df.DurableOrchestrationContext):
 
                 # Call Send Email Activity
                 send_email_result = yield context.call_activity("send_email_activity", send_email_input)
+
+                # Decrement email sender counter (email delivered or failed)
+                yield context.call_activity("update_counter_activity",
+                    {"counter": "email_sender", "action": "decrement"})
 
                 if not context.is_replaying:
                     if send_email_result.get("success"):
@@ -1270,3 +1514,100 @@ def send_email_activity(activityInput: dict) -> dict:
         Dictionary with email send status
     """
     return run_send_email_activity(activityInput)
+
+
+# =============================================================================
+# Contractor Lifecycle Activities (Clone Visualizer)
+# =============================================================================
+
+@app.activity_trigger(input_name="activityInput")
+def assign_contractor_activity(activityInput: dict) -> dict:
+    """
+    Assign a claim to a contractor slot via first-fill.
+
+    Input:  {"agent_id": "classifier", "claim_id": "CSB-001"}
+    Output: {"contractor_name": "Alice", "queued": false}
+    """
+    from shared.contractor_manager import ContractorManager
+
+    agent_id = activityInput["agent_id"]
+    claim_id = activityInput["claim_id"]
+
+    manager = ContractorManager()
+
+    # Claim leaving "received" stage and entering classifier
+    if agent_id == "classifier":
+        manager.decrement_email_received()
+
+    contractor_name = manager.assign_job(agent_id, claim_id)
+
+    logger.info(
+        f"[Contractor] {claim_id} assigned to {contractor_name or 'QUEUE'} "
+        f"at {agent_id}"
+    )
+
+    return {
+        "contractor_name": contractor_name,
+        "queued": contractor_name is None
+    }
+
+
+@app.activity_trigger(input_name="activityInput")
+def release_contractor_activity(activityInput: dict) -> dict:
+    """
+    Release a claim's contractor slot after stage completion.
+
+    Input:  {"agent_id": "classifier", "claim_id": "CSB-001"}
+    Output: {"released": true}
+    """
+    from shared.contractor_manager import ContractorManager
+
+    agent_id = activityInput["agent_id"]
+    claim_id = activityInput["claim_id"]
+
+    manager = ContractorManager()
+    released = manager.complete_job(agent_id, claim_id)
+
+    logger.info(
+        f"[Contractor] {claim_id} released from {agent_id} "
+        f"(success={released})"
+    )
+
+    return {"released": released}
+
+
+@app.activity_trigger(input_name="activityInput")
+def update_counter_activity(activityInput: dict) -> dict:
+    """
+    Update a non-pool counter (HITL waiting or Email Sender).
+
+    Input:  {"counter": "hitl", "action": "increment"}
+            {"counter": "email_sender", "action": "decrement"}
+    Output: {"success": true}
+    """
+    from shared.contractor_manager import ContractorManager
+
+    counter = activityInput["counter"]
+    action = activityInput["action"]
+
+    manager = ContractorManager()
+
+    if counter == "hitl":
+        if action == "increment":
+            manager.increment_hitl_waiting()
+        else:
+            manager.decrement_hitl_waiting()
+    elif counter == "email_sender":
+        if action == "increment":
+            manager.increment_email_sending()
+        else:
+            manager.decrement_email_sending()
+    elif counter == "email_received":
+        if action == "increment":
+            manager.increment_email_received()
+        else:
+            manager.decrement_email_received()
+
+    logger.info(f"[Contractor] Counter {counter} {action}ed")
+
+    return {"success": True}

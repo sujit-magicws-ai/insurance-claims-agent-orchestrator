@@ -230,16 +230,17 @@ def _get_mock_agent2_response(claim_id: str, claim_data: dict) -> dict:
     }
 
 
-def _get_mock_agent3_response(input_data: Agent3Input) -> dict:
+def _get_mock_agent3_response(input_data: Agent3Input, persona_name: Optional[str] = None) -> dict:
     """Generate a mock Agent3 (Email Composer) response for testing.
 
     Args:
         input_data: The Agent3 input data
+        persona_name: Optional contractor persona name (if None, uses random)
 
     Returns:
         Mock response dictionary matching Agent3Output schema
     """
-    signature = get_full_signature()  # Random persona
+    signature = get_full_signature(persona_name)  # Uses contractor name or random
 
     return {
         "claim_id": input_data.claim_id,
@@ -495,6 +496,16 @@ def parse_agent_response(response_text: str, agent_name: str, max_retries: int =
         logger.warning(f"Initial JSON parse failed for {agent_name}: {e}")
         logger.warning(f"Error at position {e.pos}, attempting repairs...")
 
+        # Handle "Extra data" — agent returned valid JSON followed by extra text
+        if "Extra data" in e.msg and e.pos > 0:
+            try:
+                truncated = json_str[:e.pos].strip()
+                result = json.loads(truncated)
+                logger.info(f"Parsed {agent_name} response by truncating extra data at pos {e.pos}")
+                return result
+            except json.JSONDecodeError:
+                logger.warning(f"Truncation at pos {e.pos} didn't produce valid JSON")
+
         # Log context around the error for debugging
         start = max(0, e.pos - 100)
         end = min(len(json_str), e.pos + 100)
@@ -585,13 +596,14 @@ def invoke_foundry_agent(agent_name: str, user_message: str, project_endpoint: s
     return extract_json_from_response(response.output_text)
 
 
-def invoke_agent1(input_data: Agent1Input, instance_id: Optional[str] = None, max_retries: int = 2) -> Agent1Output:
+def invoke_agent1(input_data: Agent1Input, instance_id: Optional[str] = None, max_retries: int = 2, persona_name: Optional[str] = None) -> Agent1Output:
     """Invoke Agent1 (claim-assistant-agent) for claim classification.
 
     Args:
         input_data: The input data for classification
         instance_id: Optional orchestration instance ID for logging
         max_retries: Maximum number of retries on failure
+        persona_name: Optional contractor persona name for prompt injection
 
     Returns:
         Agent1Output with classification results
@@ -600,7 +612,8 @@ def invoke_agent1(input_data: Agent1Input, instance_id: Optional[str] = None, ma
         Exception: If agent invocation or response parsing fails after all retries
     """
     log_prefix = f"[{instance_id}] " if instance_id else ""
-    logger.info(f"{log_prefix}Invoking Agent1 for claim {input_data.claim_id}")
+    persona_log = f" as {persona_name}" if persona_name else ""
+    logger.info(f"{log_prefix}Invoking Agent1 for claim {input_data.claim_id}{persona_log}")
 
     # Encode attachment URL if needed (handles spaces and special characters)
     encoded_attachment_url = encode_url_if_needed(input_data.attachment_url)
@@ -615,7 +628,8 @@ def invoke_agent1(input_data: Agent1Input, instance_id: Optional[str] = None, ma
             email_content=input_data.email_content,
             attachment_url=encoded_attachment_url,
             sender_email=input_data.sender_email,
-            received_date=input_data.received_date.isoformat()
+            received_date=input_data.received_date.isoformat(),
+            persona_name=persona_name
         )
 
         agent_name = os.getenv("AGENT1_NAME", "claim-assistant-agent")
@@ -651,7 +665,8 @@ def invoke_agent2(
     claim_id: str,
     claim_data: dict,
     instance_id: Optional[str] = None,
-    max_retries: int = 2
+    max_retries: int = 2,
+    persona_name: Optional[str] = None
 ) -> Agent2Output:
     """Invoke Agent2 (claim-approval-agent) for claim adjudication.
 
@@ -660,6 +675,7 @@ def invoke_agent2(
         claim_data: The structured claim data (agent2_input format)
         instance_id: Optional orchestration instance ID for logging
         max_retries: Maximum number of retries on failure
+        persona_name: Optional contractor persona name for prompt injection
 
     Returns:
         Agent2Output with adjudication results
@@ -668,7 +684,8 @@ def invoke_agent2(
         Exception: If agent invocation or response parsing fails after all retries
     """
     log_prefix = f"[{instance_id}] " if instance_id else ""
-    logger.info(f"{log_prefix}Invoking Agent2 for claim {claim_id}")
+    persona_log = f" as {persona_name}" if persona_name else ""
+    logger.info(f"{log_prefix}Invoking Agent2 for claim {claim_id}{persona_log}")
 
     if is_mock_mode(agent_num=2):
         logger.info(f"{log_prefix}Using mock mode for Agent2")
@@ -676,7 +693,7 @@ def invoke_agent2(
     else:
         # Build the prompt with embedded JSON
         claim_data_json = json.dumps(claim_data, indent=2, default=str)
-        prompt = build_agent2_prompt(claim_id, claim_data_json)
+        prompt = build_agent2_prompt(claim_id, claim_data_json, persona_name=persona_name)
 
         agent_name = os.getenv("AGENT2_NAME", "claim-approval-agent")
         project_endpoint = os.getenv("AGENT2_PROJECT_ENDPOINT")
@@ -710,7 +727,8 @@ def invoke_agent2(
 def invoke_email_composer(
     input_data: Agent3Input,
     instance_id: Optional[str] = None,
-    max_retries: int = 2
+    max_retries: int = 2,
+    persona_name: Optional[str] = None
 ) -> Agent3Output:
     """Invoke Agent3 (email-composer-agent) for email composition.
 
@@ -718,6 +736,7 @@ def invoke_email_composer(
         input_data: The input data for email composition
         instance_id: Optional orchestration instance ID for logging
         max_retries: Maximum number of retries on failure
+        persona_name: Optional contractor persona name (if None, uses random)
 
     Returns:
         Agent3Output with composed email
@@ -726,11 +745,12 @@ def invoke_email_composer(
         Exception: If agent invocation or response parsing fails after all retries
     """
     log_prefix = f"[{instance_id}] " if instance_id else ""
-    logger.info(f"{log_prefix}Invoking Email Composer for claim {input_data.claim_id}")
+    persona_log = f" as {persona_name}" if persona_name else ""
+    logger.info(f"{log_prefix}Invoking Email Composer for claim {input_data.claim_id}{persona_log}")
 
     if is_mock_mode(agent_num=3):
         logger.info(f"{log_prefix}Using mock mode for Agent3 (Email Composer)")
-        response_dict = _get_mock_agent3_response(input_data)
+        response_dict = _get_mock_agent3_response(input_data, persona_name=persona_name)
     else:
         # Build the prompt
         prompt = build_agent3_prompt(
@@ -739,7 +759,7 @@ def invoke_email_composer(
             recipient_email=input_data.recipient_email,
             email_purpose=input_data.email_purpose,
             outcome_summary=input_data.outcome_summary,
-            persona_name=None,  # Randomly picked from persona list
+            persona_name=persona_name,  # From contractor assignment, or None for random
             additional_context=input_data.additional_context or "",
             tone=input_data.config.tone,
             length=input_data.config.length,
