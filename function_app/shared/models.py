@@ -9,8 +9,29 @@ These models define the data structures for:
 """
 
 from datetime import datetime
-from typing import Any, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from typing import Annotated, Any, Literal, Optional, Union
+from pydantic import BaseModel, BeforeValidator, Field
+
+
+def clean_numeric(v):
+    """Strip common LLM formatting characters ($, commas, %, whitespace) from numeric values."""
+    if isinstance(v, str):
+        return v.replace(",", "").replace("$", "").replace("%", "").strip()
+    return v
+
+
+def clean_confidence(v):
+    """Clean confidence score — normalize percentages (85% -> 0.85) and strip formatting."""
+    if isinstance(v, str):
+        v = v.replace(",", "").replace("$", "").replace("%", "").strip()
+    v = float(v) if isinstance(v, str) else v
+    if isinstance(v, (int, float)) and v > 1.0:
+        v = v / 100.0
+    return v
+
+
+CleanInt = Annotated[Optional[int], BeforeValidator(clean_numeric)]
+CleanFloat = Annotated[Optional[float], BeforeValidator(clean_numeric)]
 
 
 # =============================================================================
@@ -43,11 +64,11 @@ class EmailBodyExtraction(BaseModel):
     claimant_phone: Optional[str] = Field(None, description="Phone mentioned in email")
     claimant_address: Optional[str] = Field(None, description="Address mentioned in email")
     contract_number: Optional[str] = Field(None, description="Contract number mentioned in email")
-    vehicle_year: Optional[int] = Field(None, description="Vehicle year")
+    vehicle_year: CleanInt = Field(None, description="Vehicle year")
     vehicle_make: Optional[str] = Field(None, description="Vehicle make")
     vehicle_model: Optional[str] = Field(None, description="Vehicle model")
     vehicle_vin: Optional[str] = Field(None, description="VIN mentioned in email")
-    current_odometer: Optional[int] = Field(None, description="Current mileage/odometer reading")
+    current_odometer: CleanInt = Field(None, description="Current mileage/odometer reading")
     date_of_loss: Optional[str] = Field(None, description="Date when the issue/failure occurred")
     issue_summary: Optional[str] = Field(None, description="Customer's description of the problem")
     repair_facility: Optional[str] = Field(None, description="Repair facility name mentioned")
@@ -68,11 +89,11 @@ class ExtractedInfo(BaseModel):
     claimant_phone: Optional[str] = Field(None, description="Merged: Document > Email")
     claimant_address: Optional[str] = Field(None, description="Merged: Document > Email")
     contract_number: Optional[str] = Field(None, description="Merged: Document > Email")
-    vehicle_year: Optional[int] = Field(None, description="Merged: Document > Email")
+    vehicle_year: CleanInt = Field(None, description="Merged: Document > Email")
     vehicle_make: Optional[str] = Field(None, description="Merged: Document > Email")
     vehicle_model: Optional[str] = Field(None, description="Merged: Document > Email")
     vehicle_vin: Optional[str] = Field(None, description="Merged: Document > Email")
-    current_odometer: Optional[int] = Field(None, description="Merged: Document > Email")
+    current_odometer: CleanInt = Field(None, description="Merged: Document > Email")
     date_of_loss: Optional[str] = Field(None, description="Merged: Document > Email")
     issue_summary: Optional[str] = Field(None, description="Merged: Email > Document (customer's words)")
     repair_facility: Optional[str] = Field(None, description="Merged: Document > Email")
@@ -115,7 +136,7 @@ class Agent1Output(BaseModel):
     claim_id: str = Field(..., description="Unique claim identifier")
     classification: ClaimClassification = Field(..., description="Claim classification details")
     justification: str = Field(..., description="Justification for the classification")
-    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
+    confidence_score: Annotated[float, BeforeValidator(clean_confidence)] = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
     flags: Agent1Flags = Field(default_factory=Agent1Flags, description="Flags and concerns")
     email_body_extraction: Optional[EmailBodyExtraction] = Field(
         None, description="Information extracted from email body"

@@ -808,7 +808,18 @@ scrollLockHint.addEventListener('click', () => {
 });
 
 function renderServerEvents(events) {
-    if (!events || events.length === 0) return;
+    if (!events || events.length === 0) {
+        // Reset to placeholder when server has no events (e.g. after restart)
+        if (renderedEventCount !== 0) {
+            renderedEventCount = 0;
+            eventLogBody.innerHTML = `<div class="event-entry">
+                <span class="event-time">--:--:--</span>
+                <span class="event-icon">&#9889;</span>
+                <span class="event-msg">Waiting for activity...</span>
+            </div>`;
+        }
+        return;
+    }
 
     // Only render if we have new events (compare count)
     if (events.length === renderedEventCount) return;
@@ -874,7 +885,7 @@ function renderCardInnerHTML(contractor, capacity) {
     for (let i = 0; i < emptyCount; i++) {
         slotsHtml += `
             <div class="job-slot">
-                <span class="job-claim-id empty">(empty)</span>
+                <span class="job-claim-id empty">(ready)</span>
                 <div class="progress-track">
                     <div class="progress-fill" style="width:0%;"></div>
                 </div>

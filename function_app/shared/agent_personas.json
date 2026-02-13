@@ -16,11 +16,11 @@
         "capacity": 2,
         "max_contractors": 5,
         "contractors": [
-            {"name": "AIContractor Alice", "color": "#2dd4a8"},
-            {"name": "AIContractor Bob", "color": "#7c5cfc"},
-            {"name": "AIContractor Priya", "color": "#f59e0b"},
-            {"name": "AIContractor David", "color": "#38bdf8"},
-            {"name": "AIContractor Mei", "color": "#c084fc"}
+            {"name": "AIContractor Carlos", "color": "#f472b6"},
+            {"name": "AIContractor Fatima", "color": "#34d399"},
+            {"name": "AIContractor Yuki", "color": "#fb923c"},
+            {"name": "AIContractor Liam", "color": "#60a5fa"},
+            {"name": "AIContractor Nia", "color": "#a78bfa"}
         ]
     },
     "email_composer": {
@@ -28,9 +28,9 @@
         "capacity": 1,
         "max_contractors": 3,
         "contractors": [
-            {"name": "AIContractor Alice", "color": "#2dd4a8"},
-            {"name": "AIContractor Bob", "color": "#7c5cfc"},
-            {"name": "AIContractor Priya", "color": "#f59e0b"}
+            {"name": "AIContractor Sofia", "color": "#fbbf24"},
+            {"name": "AIContractor Raj", "color": "#2dd4bf"},
+            {"name": "AIContractor Elena", "color": "#f87171"}
         ]
     }
 }
