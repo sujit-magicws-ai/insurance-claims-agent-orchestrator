@@ -13,8 +13,8 @@
     },
     "adjudicator": {
         "display_name": "Claim Adjudicator",
-        "capacity": 2,
-        "max_contractors": 5,
+        "capacity": 1,
+        "max_contractors": 4,
         "contractors": [
             {"name": "AIContractor Carlos", "color": "#f472b6"},
             {"name": "AIContractor Fatima", "color": "#34d399"},

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clone Dashboard &mdash; API Integration Reference</title>
+    <style>
+        :root {
+            --bg: #0f1923;
+            --bg-card: #1a2634;
+            --border: #2a3a4a;
+            --text: #e8edf2;
+            --text-dim: #8899aa;
+            --green: #2dd4a8;
+            --blue: #38bdf8;
+            --amber: #f59e0b;
+            --purple: #7c5cfc;
+            --red: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.6rem;
+            border-bottom: 2px solid var(--green);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            font-size: 1.15rem;
+            color: var(--green);
+            margin: 2rem 0 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        h2 .num {
+            background: var(--green);
+            color: var(--bg);
+            font-size: 0.75rem;
+            font-weight: 800;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        h3 {
+            font-size: 0.95rem;
+            color: var(--blue);
+            margin: 1.25rem 0 0.4rem;
+        }
+        p, li { font-size: 0.88rem; color: var(--text); }
+        ul { padding-left: 1.3rem; margin: 0.4rem 0; }
+        li { margin-bottom: 0.25rem; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin: 0.75rem 0;
+        }
+
+        /* Endpoint block */
+        .endpoint {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--blue);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 0.75rem 0;
+        }
+        .endpoint.write { border-left-color: var(--amber); }
+        .endpoint .method {
+            font-family: 'Consolas', monospace;
+            font-weight: 700;
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+        .method.get { background: rgba(56,189,248,0.15); color: var(--blue); }
+        .method.post { background: rgba(245,158,11,0.15); color: var(--amber); }
+        .endpoint .path {
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+        .endpoint .desc {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: 0.4rem;
+        }
+
+        /* Code */
+        pre {
+            background: #111922;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            overflow-x: auto;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            margin: 0.5rem 0;
+        }
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: var(--green);
+        }
+        pre code { color: var(--text); }
+        .hl-key { color: var(--blue); }
+        .hl-str { color: var(--green); }
+        .hl-num { color: var(--amber); }
+        .hl-comment { color: var(--text-dim); font-style: italic; }
+
+        /* Flow diagram */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        .flow-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-align: center;
+            min-width: 90px;
+        }
+        .flow-box.api { border-color: var(--blue); color: var(--blue); }
+        .flow-box.lane { border-color: var(--green); color: var(--green); }
+        .flow-box.hitl { border-color: var(--amber); color: var(--amber); }
+        .flow-arrow { color: var(--text-dim); font-size: 1rem; }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+            font-size: 0.82rem;
+        }
+        th {
+            text-align: left;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-dim);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.04em;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            vertical-align: top;
+        }
+        td code {
+            font-size: 0.78rem;
+            color: var(--blue);
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+        }
+        .tag.poll { background: rgba(56,189,248,0.15); color: var(--blue); }
+        .tag.click { background: rgba(245,158,11,0.15); color: var(--amber); }
+        .tag.link { background: rgba(124,92,252,0.15); color: var(--purple); }
+    </style>
+</head>
+<body>
+
+<h1>Clone Dashboard &mdash; API Integration Reference</h1>
+<p class="subtitle">How the AI Contractor Workforce Visualizer interacts with the Durable Functions backend</p>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">1</span> Architecture Overview</h2>
+<!-- ============================================================ -->
+
+<div class="card">
+    <p>The Clone Dashboard (<code>/api/clone-dashboard</code>) is a single-page HTML file served by an Azure Function.
+    It has <strong>no framework dependencies</strong> &mdash; just vanilla JS with a polling loop that hits
+    the backend every <strong>500 ms</strong> and incrementally updates the DOM.</p>
+</div>
+
+<div class="flow">
+    <div class="flow-box lane">clone_dashboard.html</div>
+    <span class="flow-arrow">&#8594;</span>
+    <div class="flow-box api">GET /api/contractors/state</div>
+    <span class="flow-arrow">&#8594;</span>
+    <div class="flow-box lane">ContractorManager.get_all_state()</div>
+</div>
+
+<p>The dashboard also links out to two other API endpoints for drill-down:</p>
+
+<div class="flow">
+    <div class="flow-box lane">Claim ID link</div>
+    <span class="flow-arrow">&#8594;</span>
+    <div class="flow-box api">GET /api/claims/status/{id}</div>
+</div>
+<div class="flow">
+    <div class="flow-box lane">"Claims List" link</div>
+    <span class="flow-arrow">&#8594;</span>
+    <div class="flow-box api">GET /api/dashboard</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">2</span> Pipeline Flow (Left to Right)</h2>
+<!-- ============================================================ -->
+
+<div class="flow">
+    <div class="flow-box hitl">Receiver</div>
+    <span class="flow-arrow">&#9654;</span>
+    <div class="flow-box lane">Classifier Agent</div>
+    <span class="flow-arrow">&#9654;</span>
+    <div class="flow-box hitl">HITL</div>
+    <span class="flow-arrow">&#9654;</span>
+    <div class="flow-box lane">Adjudicator Agent</div>
+    <span class="flow-arrow">&#9654;</span>
+    <div class="flow-box lane">Email Composer Agent</div>
+    <span class="flow-arrow">&#9654;</span>
+    <div class="flow-box hitl">Sender</div>
+</div>
+
+<div class="card">
+    <p>Each <strong>agent lane</strong> (Classifier, Adjudicator, Email Composer) displays contractor cards with live progress bars.
+    The compact lanes (Receiver, HITL, Sender) show aggregate counts only.</p>
+</div>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">3</span> API Endpoints Used by the Dashboard</h2>
+<!-- ============================================================ -->
+
+<!-- 3a: Primary polling endpoint -->
+<h3>3a. Primary Polling Endpoint <span class="tag poll">polled every 500ms</span></h3>
+
+<div class="endpoint">
+    <span class="method get">GET</span>
+    <span class="path">/api/contractors/state</span>
+    <div class="desc">Returns the full contractor workforce state. This is the <em>only</em> endpoint the dashboard actively polls.</div>
+</div>
+
+<p><strong>Response shape:</strong></p>
+<pre><code>{
+  <span class="hl-key">"timestamp"</span>: <span class="hl-str">"2026-02-18T14:30:00+00:00"</span>,
+  <span class="hl-key">"stages"</span>: {
+    <span class="hl-key">"classifier"</span>: {
+      <span class="hl-key">"contractor_count"</span>: <span class="hl-num">2</span>,
+      <span class="hl-key">"max_contractors"</span>: <span class="hl-num">5</span>,
+      <span class="hl-key">"capacity_per_contractor"</span>: <span class="hl-num">3</span>,
+      <span class="hl-key">"pending_count"</span>: <span class="hl-num">1</span>,
+      <span class="hl-key">"total_jobs_in_flight"</span>: <span class="hl-num">4</span>,
+      <span class="hl-key">"total_completed"</span>: <span class="hl-num">12</span>,
+      <span class="hl-key">"active_contractors"</span>: [
+        {
+          <span class="hl-key">"name"</span>: <span class="hl-str">"Priya Sharma"</span>,
+          <span class="hl-key">"color"</span>: <span class="hl-str">"#2dd4a8"</span>,
+          <span class="hl-key">"status"</span>: <span class="hl-str">"full"</span> | <span class="hl-str">"available"</span> | <span class="hl-str">"idle"</span>,
+          <span class="hl-key">"slots_used"</span>: <span class="hl-num">3</span>,
+          <span class="hl-key">"jobs_completed"</span>: <span class="hl-num">7</span>,
+          <span class="hl-key">"is_primary"</span>: <span class="hl-num">true</span>,
+          <span class="hl-key">"active_jobs"</span>: [
+            { <span class="hl-key">"claim_id"</span>: <span class="hl-str">"CLM-001"</span>, <span class="hl-key">"progress_pct"</span>: <span class="hl-num">72</span> }
+          ]
+        }
+      ]
+    },
+    <span class="hl-key">"adjudicator"</span>: { <span class="hl-comment">/* same shape */</span> },
+    <span class="hl-key">"email_composer"</span>: { <span class="hl-comment">/* same shape */</span> }
+  },
+  <span class="hl-key">"email_receiver"</span>: {
+    <span class="hl-key">"received_count"</span>: <span class="hl-num">2</span>,
+    <span class="hl-key">"total_received_count"</span>: <span class="hl-num">15</span>
+  },
+  <span class="hl-key">"hitl"</span>: {
+    <span class="hl-key">"waiting_count"</span>: <span class="hl-num">3</span>,
+    <span class="hl-key">"reviewed_count"</span>: <span class="hl-num">10</span>
+  },
+  <span class="hl-key">"email_sender"</span>: {
+    <span class="hl-key">"sending_count"</span>: <span class="hl-num">1</span>,
+    <span class="hl-key">"sent_count"</span>: <span class="hl-num">8</span>
+  },
+  <span class="hl-key">"global"</span>: {
+    <span class="hl-key">"total_claims_in_flight"</span>: <span class="hl-num">7</span>,
+    <span class="hl-key">"total_claims_completed"</span>: <span class="hl-num">20</span>
+  },
+  <span class="hl-key">"events"</span>: [
+    {
+      <span class="hl-key">"type"</span>: <span class="hl-str">"job_assigned"</span>,
+      <span class="hl-key">"timestamp"</span>: <span class="hl-str">"14:30:02"</span>,
+      <span class="hl-key">"message"</span>: <span class="hl-str">"Priya Sharma assigned CLM-001"</span>,
+      <span class="hl-key">"contractor"</span>: <span class="hl-str">"Priya Sharma"</span>,
+      <span class="hl-key">"claim_id"</span>: <span class="hl-str">"CLM-001"</span>
+    }
+  ]
+}</code></pre>
+
+<!-- 3b: Claim status drill-down -->
+<h3>3b. Claim Status Drill-Down <span class="tag click">click</span></h3>
+
+<div class="endpoint">
+    <span class="method get">GET</span>
+    <span class="path">/api/claims/status/claim-{claim_id}</span>
+    <div class="desc">Opened in a new tab when a user clicks a claim ID in any contractor card's progress bar.
+    Returns the Durable Functions orchestration status including <code>custom_status</code> (current step, progress), timestamps, and final output.</div>
+</div>
+
+<!-- 3c: Claims list -->
+<h3>3c. Claims List Dashboard <span class="tag link">link</span></h3>
+
+<div class="endpoint">
+    <span class="method get">GET</span>
+    <span class="path">/api/dashboard</span>
+    <div class="desc">The HITL lane has a "Claims List" link that opens the full claims management dashboard in a new tab.
+    That dashboard shows all orchestrations and provides the manual-estimate review UI.</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">4</span> How Data Maps to the UI</h2>
+<!-- ============================================================ -->
+
+<table>
+    <thead>
+        <tr>
+            <th>UI Element</th>
+            <th>JSON Path</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Header &mdash; In Flight pill</td>
+            <td><code>global.total_claims_in_flight</code></td>
+            <td>Sum of all active jobs across all 3 agent pools</td>
+        </tr>
+        <tr>
+            <td>Header &mdash; Completed pill</td>
+            <td><code>global.total_claims_completed</code></td>
+            <td>Sum of completed jobs across all pools</td>
+        </tr>
+        <tr>
+            <td>Header &mdash; Pending pill</td>
+            <td><code>stages.*.pending_count</code></td>
+            <td>Calculated client-side: sum of pending_count across classifier, adjudicator, email_composer</td>
+        </tr>
+        <tr>
+            <td>Receiver lane &mdash; count</td>
+            <td><code>email_receiver.received_count</code></td>
+            <td>Emails currently being ingested</td>
+        </tr>
+        <tr>
+            <td>Agent lane &mdash; Workers label</td>
+            <td><code>stages.{id}.contractor_count / max_contractors</code></td>
+            <td>e.g. "2/5"</td>
+        </tr>
+        <tr>
+            <td>Agent lane &mdash; Contractor cards</td>
+            <td><code>stages.{id}.active_contractors[]</code></td>
+            <td>Incrementally reconciled &mdash; new cards animate in, removed cards fade out</td>
+        </tr>
+        <tr>
+            <td>Card &mdash; progress bar per job</td>
+            <td><code>active_contractors[].active_jobs[].progress_pct</code></td>
+            <td>0-100; bar turns green at 100%</td>
+        </tr>
+        <tr>
+            <td>Card &mdash; status badge</td>
+            <td><code>active_contractors[].status</code></td>
+            <td>"full" (red), "available" (green), "idle" (gray)</td>
+        </tr>
+        <tr>
+            <td>HITL lane &mdash; waiting count</td>
+            <td><code>hitl.waiting_count</code></td>
+            <td>Claims paused waiting for manual estimate via <code>wait_for_external_event</code></td>
+        </tr>
+        <tr>
+            <td>HITL lane &mdash; reviewed count</td>
+            <td><code>hitl.reviewed_count</code></td>
+            <td>Claims that have passed through HITL</td>
+        </tr>
+        <tr>
+            <td>Sender lane &mdash; counts</td>
+            <td><code>email_sender.sending_count / sent_count</code></td>
+            <td>Emails in-progress vs completed</td>
+        </tr>
+        <tr>
+            <td>Event Log</td>
+            <td><code>events[]</code></td>
+            <td>Server-side event array; only re-renders when array length changes</td>
+        </tr>
+    </tbody>
+</table>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">5</span> Polling Mechanics</h2>
+<!-- ============================================================ -->
+
+<div class="card">
+    <ul>
+        <li><strong>Interval:</strong> <code>500 ms</code> via <code>setInterval(poll, 500)</code></li>
+        <li><strong>Connection indicator:</strong> Green dot + "live" on success; red dot + "disconnected" on fetch error</li>
+        <li><strong>Incremental DOM updates:</strong> Contractor cards are reconciled by ID (<code>card-{stage}-{name}</code>).
+            Existing cards update innerHTML without re-triggering enter animations.
+            New cards get a 2-second green glow (<code>.spawning</code>); removed cards fade out over 500ms (<code>.terminating</code>).</li>
+        <li><strong>Event log optimization:</strong> Events only re-render when <code>events.length !== renderedEventCount</code>.
+            Auto-scroll is paused when the user scrolls up manually.</li>
+    </ul>
+</div>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">6</span> Durable Functions Integration Points</h2>
+<!-- ============================================================ -->
+
+<div class="card">
+    <p>The dashboard itself is <strong>read-only</strong> &mdash; it never writes to the orchestration.
+    All mutations happen through other endpoints that feed into the same <code>ContractorManager</code> state:</p>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Durable Functions Concept</th>
+            <th>Backend Endpoint</th>
+            <th>Dashboard Visibility</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Start orchestration</td>
+            <td><code>POST /api/claims/start</code></td>
+            <td>Card appears in Classifier lane; Receiver count increments</td>
+        </tr>
+        <tr>
+            <td><code>wait_for_external_event("ManualEstimate")</code></td>
+            <td>Orchestrator pauses</td>
+            <td>HITL waiting count goes up</td>
+        </tr>
+        <tr>
+            <td><code>raise_event</code> (submit estimate)</td>
+            <td><code>POST /api/claims/approve/{id}</code></td>
+            <td>HITL count drops; card appears in Adjudicator lane</td>
+        </tr>
+        <tr>
+            <td>Activity progress updates</td>
+            <td>ContractorManager (in-memory)</td>
+            <td>Progress bars animate in real time</td>
+        </tr>
+        <tr>
+            <td>Orchestration completes</td>
+            <td>Final activity finishes</td>
+            <td>Card removed from Email Composer; Sender sent_count increments</td>
+        </tr>
+        <tr>
+            <td><code>custom_status</code> (step tracking)</td>
+            <td><code>GET /api/claims/status/{id}</code></td>
+            <td>Visible when clicking a claim ID link (opens in new tab)</td>
+        </tr>
+    </tbody>
+</table>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">7</span> Event Types in the Event Log</h2>
+<!-- ============================================================ -->
+
+<table>
+    <thead>
+        <tr>
+            <th>Event Type</th>
+            <th>Icon</th>
+            <th>Meaning</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td><code>email_received</code></td><td>&#128233;</td><td>New claim email ingested</td></tr>
+        <tr><td><code>spawn</code></td><td>&#128994;</td><td>New contractor instance spun up</td></tr>
+        <tr><td><code>job_assigned</code></td><td>&#128203;</td><td>Claim assigned to a contractor</td></tr>
+        <tr><td><code>job_completed</code></td><td>&#9989;</td><td>Contractor finished processing a claim</td></tr>
+        <tr><td><code>hitl_entered</code></td><td>&#9995;</td><td>Claim entered HITL queue (awaiting manual estimate)</td></tr>
+        <tr><td><code>hitl_reviewed</code></td><td>&#9989;</td><td>Manual estimate submitted, claim resumed</td></tr>
+        <tr><td><code>email_sending</code></td><td>&#128228;</td><td>Decision email being composed/sent</td></tr>
+        <tr><td><code>email_sent</code></td><td>&#9989;</td><td>Decision email delivered</td></tr>
+        <tr><td><code>terminate</code></td><td>&#128308;</td><td>Contractor instance scaled down</td></tr>
+    </tbody>
+</table>
+
+
+<!-- ============================================================ -->
+<h2><span class="num">8</span> Key Source Files</h2>
+<!-- ============================================================ -->
+
+<table>
+    <thead>
+        <tr>
+            <th>File</th>
+            <th>Role</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>static/clone_dashboard.html</code></td>
+            <td>The full dashboard UI &mdash; HTML + CSS + JS in a single file</td>
+        </tr>
+        <tr>
+            <td><code>function_app.py</code></td>
+            <td>Defines all HTTP routes: <code>/api/contractors/state</code>, <code>/api/clone-dashboard</code>, <code>/api/claims/*</code></td>
+        </tr>
+        <tr>
+            <td><code>shared/contractor_manager.py</code></td>
+            <td>In-memory state manager; <code>get_all_state()</code> builds the JSON payload consumed by the dashboard</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="card" style="margin-top: 2rem; border-left: 4px solid var(--purple);">
+    <p style="font-size: 0.8rem; color: var(--text-dim);">
+        Generated for the DURFUNC project &mdash; Azure Durable Functions HITL Orchestration.
+    </p>
+</div>
+
+</body>
+</html>

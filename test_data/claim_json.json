@@ -1,0 +1,71 @@
+{{
+    "claim_id": "{claim_id}",
+    "classification": {{
+        "claim_type": "VSC | GAP | Tire & Wheel | PPM | Appearance | Theft | Other",
+        "sub_type": "Mechanical | Electrical | Road Hazard | Maintenance | Cosmetic | Other | null",
+        "component_category": "Transmission | Engine | Brakes | Tire | Wheel | Windshield | Interior | Exterior | etc. | null",
+        "urgency": "Standard | Urgent | Emergency"
+    }},
+    "justification": "Your detailed justification referencing the contract type criteria above",
+    "confidence_score": 0.0 to 1.0,
+    "flags": {{
+        "requires_human_review": true/false,
+        "missing_information": ["list of missing items"],
+        "potential_concerns": ["list of concerns"]
+    }},
+    "email_body_extraction": {{
+        "claimant_name": "Name mentioned in email or null",
+        "claimant_phone": "Phone mentioned in email or null",
+        "claimant_address": "Address mentioned in email or null",
+        "contract_number": "Contract number mentioned in email or null",
+        "vehicle_year": 2023 or null,
+        "vehicle_make": "Make or null",
+        "vehicle_model": "Model or null",
+        "vehicle_vin": "VIN mentioned in email or null",
+        "current_odometer": 45000 or null,
+        "date_of_loss": "YYYY-MM-DD or null",
+        "issue_summary": "Customer's description of the problem in their own words",
+        "repair_facility": "Facility name mentioned in email or null",
+        "diagnosis": "Any diagnosis mentioned or null",
+        "lienholder": "Lienholder/financing company or null"
+    }},
+    "document_extraction": {{
+        "status": "success | failed | not_accessible",
+        "document_type": "claim_form | damage_photos | invoice | unknown | null",
+        "summary": "2-3 sentence summary of the document content",
+        "extracted_fields": {{
+            "claimant_name": "Name from document or null",
+            "claimant_phone": "Phone from document or null",
+            "claimant_address": "Full address from document or null",
+            "contract_number": "Contract number from document or null",
+            "vehicle_year": 2023 or null,
+            "vehicle_make": "Make or null",
+            "vehicle_model": "Model or null",
+            "vehicle_vin": "VIN from document or null",
+            "current_odometer": 45000 or null,
+            "date_of_loss": "YYYY-MM-DD or null",
+            "issue_summary": "Issue description from document or null",
+            "repair_facility": "Facility name and address from document or null",
+            "diagnosis": "Diagnosis from document or null",
+            "lienholder": "Lienholder/financing company or null"
+        }},
+        "notes": "Any issues accessing or parsing the document, or additional observations"
+    }},
+    "extracted_info": {{
+        "claimant_name": "Merged: Document > Email",
+        "claimant_email": "{sender_email}",
+        "claimant_phone": "Merged: Document > Email",
+        "claimant_address": "Merged: Document > Email",
+        "contract_number": "Merged: Document > Email",
+        "vehicle_year": "Merged: Document > Email",
+        "vehicle_make": "Merged: Document > Email",
+        "vehicle_model": "Merged: Document > Email",
+        "vehicle_vin": "Merged: Document > Email",
+        "current_odometer": "Merged: Document > Email",
+        "date_of_loss": "Merged: Document > Email",
+        "issue_summary": "Merged: Email > Document (customer's own words preferred)",
+        "repair_facility": "Merged: Document > Email",
+        "diagnosis": "Merged: Document > Email",
+        "lienholder": "Merged: Document > Email"
+    }}
+}}

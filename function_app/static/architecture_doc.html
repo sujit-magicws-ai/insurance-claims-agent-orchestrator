@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claims Processing - System Architecture</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #818cf8;
+    --green: #34d399;
+    --orange: #fb923c;
+    --red: #f87171;
+    --blue: #60a5fa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 4px; color: #fff; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 32px; }
+  h2 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin: 28px 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 20px 0 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: center;
+    min-width: 130px;
+  }
+  .flow-box .label { font-size: 0.75rem; color: var(--muted); }
+  .flow-box .name { font-weight: 600; font-size: 0.95rem; }
+  .flow-box.agent { border-color: var(--accent); }
+  .flow-box.hitl { border-color: var(--orange); }
+  .flow-box.send { border-color: var(--green); }
+  .flow-box.input { border-color: var(--blue); }
+  .arrow { font-size: 1.3rem; color: var(--muted); padding: 0 6px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 16px;
+    font-size: 0.88rem;
+  }
+  th {
+    text-align: left;
+    background: var(--surface);
+    color: var(--accent);
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  code {
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    color: var(--green);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 12px 0;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .card h3 {
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .card ul {
+    list-style: none;
+    font-size: 0.85rem;
+  }
+  .card ul li {
+    padding: 3px 0;
+    color: var(--muted);
+  }
+  .card ul li strong { color: var(--text); }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .tag-agent { background: rgba(129,140,248,0.15); color: var(--accent); }
+  .tag-hitl { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .tag-send { background: rgba(52,211,153,0.15); color: var(--green); }
+  .tag-input { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .footer {
+    margin-top: 36px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  @media print {
+    body { background: #fff; color: #1a1a1a; padding: 20px; }
+    .flow-box { border-color: #999; }
+    th { background: #f0f0f0; color: #333; }
+    td { color: #333; }
+    code { background: #f5f5f5; color: #0a6; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Claims Processing System Architecture</h1>
+<p class="subtitle">Azure Durable Functions &mdash; Human-in-the-Loop Orchestration &mdash; JM&amp;A Group, Fidelity Warranty Services</p>
+
+<!-- ============================== WORKFLOW ============================== -->
+<h2>Orchestration Workflow</h2>
+
+<div class="flow">
+  <div class="flow-box input">
+    <div class="label">Trigger</div>
+    <div class="name">Email / HTTP</div>
+  </div>
+  <span class="arrow">&rarr;</span>
+  <div class="flow-box agent">
+    <div class="label">Stage 1</div>
+    <div class="name">Classifier Agent</div>
+  </div>
+  <span class="arrow">&rarr;</span>
+  <div class="flow-box hitl">
+    <div class="label">Stage 2</div>
+    <div class="name">HITL Review</div>
+  </div>
+  <span class="arrow">&rarr;</span>
+  <div class="flow-box agent">
+    <div class="label">Stage 3</div>
+    <div class="name">Adjudicator Agent</div>
+  </div>
+  <span class="arrow">&rarr;</span>
+  <div class="flow-box agent">
+    <div class="label">Stage 4</div>
+    <div class="name">Email Composer</div>
+  </div>
+  <span class="arrow">&rarr;</span>
+  <div class="flow-box send">
+    <div class="label">Stage 5</div>
+    <div class="name">SMTP Send</div>
+  </div>
+</div>
+
+<table>
+  <tr><th>Stage</th><th>Component</th><th>Description</th><th>Type</th></tr>
+  <tr>
+    <td>1</td><td><strong>Claim Classifier</strong></td>
+    <td>Classifies claim type, extracts info from email + PDF attachment</td>
+    <td><span class="tag tag-agent">AI Agent</span></td>
+  </tr>
+  <tr>
+    <td>2</td><td><strong>Human Review</strong></td>
+    <td>Manual estimate entry via web form. 24-hour timeout. Approve or reject.</td>
+    <td><span class="tag tag-hitl">HITL</span></td>
+  </tr>
+  <tr>
+    <td>3</td><td><strong>Claim Adjudicator</strong></td>
+    <td>Evaluates claim against policy, determines coverage and approved amount</td>
+    <td><span class="tag tag-agent">AI Agent</span></td>
+  </tr>
+  <tr>
+    <td>4</td><td><strong>Email Composer</strong></td>
+    <td>Composes professional notification email with adjudication outcome</td>
+    <td><span class="tag tag-agent">AI Agent</span></td>
+  </tr>
+  <tr>
+    <td>5</td><td><strong>Email Sender</strong></td>
+    <td>Delivers composed email via Gmail SMTP to review address</td>
+    <td><span class="tag tag-send">SMTP</span></td>
+  </tr>
+</table>
+
+<!-- ============================== COMPONENTS ============================== -->
+<h2>Key Components</h2>
+
+<div class="grid">
+  <div class="card">
+    <h3>Azure AI Foundry Agents</h3>
+    <ul>
+      <li><strong>claim-assistant-agent</strong> &mdash; Classifier</li>
+      <li><strong>claim-approval-agent</strong> &mdash; Adjudicator</li>
+      <li><strong>EmailComposerAgent</strong> &mdash; Email Composer</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>AI Contractor Workforce</h3>
+    <ul>
+      <li><strong>Classifier Pool</strong> &mdash; 5 contractors, 3 slots each</li>
+      <li><strong>Adjudicator Pool</strong> &mdash; 5 contractors, 2 slots each</li>
+      <li><strong>Email Composer Pool</strong> &mdash; 3 contractors, 1 slot each</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Ingestion</h3>
+    <ul>
+      <li><strong>HTTP API</strong> &mdash; <code>POST /api/claims/start</code></li>
+      <li><strong>Service Bus</strong> &mdash; <code>claims-agent-inbox</code> queue</li>
+      <li><strong>Dashboard</strong> &mdash; Manual claim submission form</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Infrastructure</h3>
+    <ul>
+      <li><strong>Runtime</strong> &mdash; Azure Functions (Python v2)</li>
+      <li><strong>Orchestration</strong> &mdash; Durable Task Framework</li>
+      <li><strong>Storage</strong> &mdash; Azure Storage / Azurite</li>
+      <li><strong>Auth</strong> &mdash; Service Principal (ClientSecret)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================== API ============================== -->
+<h2>API Endpoints</h2>
+
+<table>
+  <tr><th>Method</th><th>Route</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/api/claims/start</code></td><td>Start new claim orchestration</td></tr>
+  <tr><td>POST</td><td><code>/api/claims/approve/{id}</code></td><td>Submit manual estimate (HITL approval)</td></tr>
+  <tr><td>GET</td><td><code>/api/claims</code></td><td>List all claims with filtering</td></tr>
+  <tr><td>GET</td><td><code>/api/claims/status/{id}</code></td><td>Get orchestration status</td></tr>
+  <tr><td>GET</td><td><code>/api/contractors/state</code></td><td>Workforce state (dashboard polling)</td></tr>
+  <tr><td>GET</td><td><code>/api/health</code></td><td>Service health check</td></tr>
+  <tr><td>GET</td><td><code>/api/dashboard</code></td><td>Claims management dashboard</td></tr>
+  <tr><td>GET</td><td><code>/api/clone-dashboard</code></td><td>AI Contractor workforce visualizer</td></tr>
+</table>
+
+<!-- ============================== STATE MANAGEMENT ============================== -->
+<h2>Durable Functions State Management</h2>
+
+<p style="color:var(--muted); font-size:0.88rem; margin-bottom:16px;">
+  A normal Azure Function is stateless &mdash; it runs, finishes, and forgets.
+  Durable Functions persist state automatically so orchestrations survive restarts, crashes, and long waits (like the 24-hour HITL timeout).
+</p>
+
+<!-- How it works -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>How It Works: Event Sourcing</h3>
+  <p style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">
+    The framework doesn't store a snapshot of "current state". Instead it records a
+    <strong style="color:var(--text);">history of every step</strong> that happened &mdash; every activity call, every timer, every external event.
+    This is called <em>event sourcing</em>.
+  </p>
+  <table style="margin:0;">
+    <tr><th>#</th><th>History Event</th><th>Stored Result</th></tr>
+    <tr><td>1</td><td>Orchestrator started</td><td>Input payload (claim_id, email, PDF&nbsp;URL)</td></tr>
+    <tr><td>2</td><td><code>call_activity("agent1_activity")</code></td><td>Classification output</td></tr>
+    <tr><td>3</td><td><code>call_activity("notify_activity")</code></td><td>Notification result</td></tr>
+    <tr><td>4</td><td><code>wait_for_external_event("ManualEstimate")</code></td><td><em>(paused &mdash; no result yet)</em></td></tr>
+    <tr><td>5</td><td>External event received</td><td>Reviewer's estimate data</td></tr>
+    <tr><td>6</td><td><code>call_activity("agent2_activity")</code></td><td>Adjudication decision</td></tr>
+    <tr><td>7</td><td><code>call_activity("agent3_activity")</code></td><td>Composed email</td></tr>
+    <tr><td>8</td><td>Orchestrator returned</td><td>Final result dict</td></tr>
+  </table>
+</div>
+
+<!-- Replay -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>The Replay Mechanism</h3>
+  <p style="font-size:0.85rem; color:var(--muted);">
+    When the orchestrator wakes up (e.g. after an external event arrives), the framework
+    <strong style="color:var(--text);">replays the entire function from the top</strong>.
+    But it doesn't re-execute activities &mdash; it sees the result already in the history and returns it instantly.
+    Real work only happens when it reaches a <strong style="color:var(--text);">new</strong> step not yet in the history.
+  </p>
+  <p style="font-size:0.85rem; color:var(--muted); margin-top:8px;">
+    That's why the orchestrator guards log statements:
+    <code>if not context.is_replaying: logger.info(...)</code>
+    &mdash; so logs only fire once, not on every replay.
+  </p>
+</div>
+
+<!-- Three kinds of state -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>Three Kinds of State</h3>
+  <table style="margin:0;">
+    <tr><th>Kind</th><th>Written By</th><th>Read By</th><th>Lifetime</th></tr>
+    <tr>
+      <td><strong>History</strong></td>
+      <td>Framework (automatic)</td>
+      <td>Framework (replay)</td>
+      <td>Every <code>yield</code> result is saved. You never manage this.</td>
+    </tr>
+    <tr>
+      <td><strong>Custom Status</strong></td>
+      <td><code>context.set_custom_status({...})</code></td>
+      <td><code>client.get_status(id).custom_status</code></td>
+      <td>Overwritten on each call. Only the latest value is visible. Acts as a live progress whiteboard.</td>
+    </tr>
+    <tr>
+      <td><strong>Final Output</strong></td>
+      <td><code>return result</code></td>
+      <td><code>client.get_status(id).output</code></td>
+      <td>Set once when the orchestrator finishes. Includes the full result dict with all agent outputs, timestamps, and decision.</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Custom status steps in this project -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>Custom Status Steps (This Project)</h3>
+  <p style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">
+    The orchestrator calls <code>context.set_custom_status()</code> at each stage.
+    The dashboard and status API read this to show real-time progress.
+  </p>
+  <div class="flow" style="gap:4px; margin:12px 0 4px;">
+    <div class="flow-box agent" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">agent1_<br>processing</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+    <div class="flow-box input" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">sending_<br>notification</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+    <div class="flow-box hitl" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">awaiting_<br>approval</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+    <div class="flow-box agent" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">agent2_<br>processing</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+    <div class="flow-box agent" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">agent3_<br>processing</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+    <div class="flow-box send" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">sending_<br>email</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+    <div class="flow-box send" style="min-width:80px; padding:8px 10px;">
+      <div class="label">Step</div>
+      <div class="name" style="font-size:0.78rem;">completed</div>
+    </div>
+  </div>
+  <p style="font-size:0.8rem; color:var(--muted); margin-top:6px;">
+    Branch steps: <code>timeout</code> (24h elapsed) &bull; <code>rejected</code> (reviewer rejects claim)
+  </p>
+</div>
+
+<!-- How to read state -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>How External Code Reads State</h3>
+  <table style="margin:0;">
+    <tr><th>Method</th><th>Use Case</th><th>Returns</th></tr>
+    <tr>
+      <td><code>await client.get_status(id)</code></td>
+      <td>Single instance lookup (status page, pre-approval check)</td>
+      <td><code>runtime_status</code>, <code>custom_status</code>, <code>output</code>, timestamps</td>
+    </tr>
+    <tr>
+      <td>
+        <code>GET /runtime/webhooks/durabletask/instances</code>
+        <br><span style="font-size:0.75rem; color:var(--muted);">+ <code>?instanceIdPrefix=claim-</code></span>
+      </td>
+      <td>List all orchestrations (claims list page)</td>
+      <td>JSON array with same fields for every matching instance</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Where is it stored -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>Where State Is Stored</h3>
+  <table style="margin:0;">
+    <tr><th>What</th><th>Where</th><th>You Manage It?</th></tr>
+    <tr><td>Event history</td><td>Azure Storage (tables + queues + blobs)</td><td>No &mdash; automatic</td></tr>
+    <tr><td>Custom status</td><td>Inside the history</td><td>Yes &mdash; <code>set_custom_status()</code></td></tr>
+    <tr><td>Final output</td><td>Inside the history</td><td>Yes &mdash; <code>return</code> value</td></tr>
+    <tr><td>Activity inputs/outputs</td><td>Azure Storage queues &amp; blobs</td><td>No &mdash; automatic</td></tr>
+  </table>
+  <p style="font-size:0.8rem; color:var(--muted); margin-top:8px;">
+    Locally, <strong style="color:var(--text);">Azurite</strong> emulates Azure Storage in Docker.
+    Restarting the Azurite container clears all state (in-memory only).
+  </p>
+</div>
+
+<!-- Orchestrator rules -->
+<div class="card" style="margin-bottom:16px;">
+  <h3>Orchestrator Code Constraints</h3>
+  <p style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">
+    Because of replay, orchestrator code must be <strong style="color:var(--text);">deterministic</strong>.
+    If code runs differently on replay vs. first execution, the history won't match and the framework will error.
+  </p>
+  <table style="margin:0;">
+    <tr><th>Don't Do This</th><th>Do This Instead</th><th>Why</th></tr>
+    <tr>
+      <td><code>uuid.uuid4()</code></td>
+      <td><code>context.new_guid()</code></td>
+      <td>Random values differ on replay</td>
+    </tr>
+    <tr>
+      <td><code>datetime.now()</code></td>
+      <td><code>context.current_utc_datetime</code></td>
+      <td>Time changes on replay</td>
+    </tr>
+    <tr>
+      <td><code>await some_api()</code></td>
+      <td><code>yield context.call_activity(...)</code></td>
+      <td>I/O must go through activities to be recorded</td>
+    </tr>
+    <tr>
+      <td><code>logger.info(msg)</code></td>
+      <td><code>if not context.is_replaying: logger.info(msg)</code></td>
+      <td>Avoid duplicate log entries</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ============================== TECH STACK ============================== -->
+<h2>Technology Stack</h2>
+
+<table>
+  <tr><th>Layer</th><th>Technology</th></tr>
+  <tr><td>Runtime</td><td>Azure Functions v4, Python 3.11, Durable Functions SDK</td></tr>
+  <tr><td>AI Agents</td><td>Azure AI Foundry (3 agents), azure-ai-projects SDK</td></tr>
+  <tr><td>Messaging</td><td>Azure Service Bus (queue trigger for email intake)</td></tr>
+  <tr><td>Storage</td><td>Azure Blob Storage / Azurite (orchestration state)</td></tr>
+  <tr><td>Email</td><td>Gmail SMTP (TLS, port 587)</td></tr>
+  <tr><td>Auth</td><td>Azure AD Service Principal (ClientSecretCredential)</td></tr>
+  <tr><td>Models</td><td>Pydantic v2 (request/response validation)</td></tr>
+  <tr><td>Dashboard</td><td>Vanilla HTML/JS (real-time polling at 500ms)</td></tr>
+</table>
+
+<div class="footer">
+  Claims Processing System &mdash; Azure Durable Functions HITL Orchestration &mdash; JM&amp;A Group
+</div>
+
+</body>
+</html>
