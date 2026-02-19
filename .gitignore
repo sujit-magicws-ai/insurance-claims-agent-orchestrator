@@ -86,3 +86,4 @@ secrets.json
 # Local/temporary folders
 temp/
 .claude/
+REFACTOR/
