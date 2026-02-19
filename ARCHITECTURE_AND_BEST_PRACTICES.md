@@ -26,6 +26,7 @@
 15. [Common Pitfalls & Solutions](#15-common-pitfalls--solutions)
 16. [Development Workflow with Claude Code](#16-development-workflow-with-claude-code)
 17. [CLAUDE.md — Your AI Assistant's Playbook](#17-claudemd--your-ai-assistants-playbook)
+18. [Community Gotchas & Hard-Won Lessons](#18-community-gotchas--hard-won-lessons)
 
 ---
 
@@ -1611,6 +1612,395 @@ func start                           # Start function app
 | `host.json` | Durable Functions configuration |
 | `local.settings.json` | Environment variables |
 | `CLAUDE.md` | AI assistant project context |
+
+---
+
+## 18. Community Gotchas & Hard-Won Lessons
+
+These gotchas are drawn from official Microsoft documentation, community reports, Stack Overflow threads, and real-world production experience. They go beyond the basic pitfalls in Section 15 and focus on **subtle issues** that can bite you in production.
+
+---
+
+### 18.1 Orchestrator Determinism — The #1 Source of Bugs
+
+The orchestrator function **replays from the beginning** every time it wakes up (after an activity completes, an event arrives, or a timer fires). This means every line of code before the current `yield` runs again. Any non-deterministic call will cause a `NonDeterministicOrchestrationException`.
+
+**Banned in orchestrators:**
+
+| Do NOT Use | Use Instead |
+|------------|-------------|
+| `datetime.now()` / `datetime.utcnow()` | `context.current_utc_datetime` |
+| `uuid.uuid4()` / `random.random()` | `context.new_guid()` or compute in an activity |
+| `os.environ["KEY"]` | Read env vars in an activity and pass as input |
+| `requests.get()` / any HTTP call | Call from an activity function |
+| `open()` / file I/O | Do all I/O in activities |
+| `asyncio.sleep()` / `time.sleep()` | `context.create_timer(...)` |
+| Static/global mutable variables | Pass state through activity return values |
+
+**Why this matters in HITL workflows:** Your orchestrator might replay 10+ times during a single claim's lifecycle (after classification, after HITL wait, after adjudication, after email composition). If any of these replays produce different results, the framework throws an exception and your orchestration is stuck.
+
+```python
+# BAD — will fail on replay
+@app.orchestration_trigger(context_name="context")
+def my_orchestrator(context):
+    timestamp = datetime.utcnow()  # Different on every replay!
+    claim_id = str(uuid.uuid4())   # Different on every replay!
+    config = os.environ["API_KEY"] # Might change between replays!
+
+# GOOD — deterministic
+@app.orchestration_trigger(context_name="context")
+def my_orchestrator(context):
+    timestamp = context.current_utc_datetime   # Replayed from history
+    claim_id = context.new_guid()              # Deterministic across replays
+    config = yield context.call_activity("GetConfig", None)  # Recorded in history
+```
+
+---
+
+### 18.2 Python-Specific Concurrency Trap
+
+Azure Functions Python workers are **single-threaded by default**. This has major implications:
+
+**The problem:** With default settings (`PYTHON_THREADPOOL_THREAD_COUNT=1`), only **one function invocation runs at a time** per worker VM — even if you have 10 activities ready to execute in parallel.
+
+**The fix:**
+```json
+// local.settings.json (or App Settings in Azure)
+{
+  "Values": {
+    "PYTHON_THREADPOOL_THREAD_COUNT": "4"
+  }
+}
+```
+
+**Recommended values:**
+| Scenario | Value |
+|----------|-------|
+| CPU-bound activities | Number of CPU cores |
+| I/O-bound activities (API calls, DB) | `4` to `8` |
+| Heavy fan-out patterns | `8` (max recommended) |
+
+**Combined with host.json tuning:**
+```json
+{
+  "extensions": {
+    "durableTask": {
+      "maxConcurrentActivityFunctions": 10,
+      "maxConcurrentOrchestratorFunctions": 5
+    }
+  }
+}
+```
+
+> **Gotcha:** Setting `PYTHON_THREADPOOL_THREAD_COUNT` too high can cause memory pressure. The GIL still serializes CPU-bound work, so values above 8 rarely help.
+
+---
+
+### 18.3 Python Orchestrators Must Be Generators, Not Coroutines
+
+This is a Python SDK-specific trap that causes silent failures.
+
+```python
+# BAD — async def makes it a coroutine, NOT a generator
+@app.orchestration_trigger(context_name="context")
+async def my_orchestrator(context):
+    result = yield context.call_activity("DoWork", None)
+    return result
+
+# GOOD — plain def makes it a generator (required!)
+@app.orchestration_trigger(context_name="context")
+def my_orchestrator(context):
+    result = yield context.call_activity("DoWork", None)
+    return result
+```
+
+**Why:** The Durable Functions Python SDK uses `yield` to intercept activity calls and record them in the execution history. Using `async def` turns the function into a coroutine, which changes how `yield` works and breaks the replay mechanism. The error message is often unhelpful.
+
+---
+
+### 18.4 Payload Size & Orchestration History Growth
+
+Every input and output of every `yield context.call_activity(...)` is serialized and stored in the orchestration history. This history is replayed on every wake-up.
+
+**The math:**
+- 5 activities × 50KB average payload = 250KB per replay
+- With 3 HITL stages = 750KB+ replayed on every event
+- History grows **monotonically** — it never shrinks during an orchestration
+
+**What happens:**
+| History Size | Impact |
+|-------------|--------|
+| < 100KB | No issues |
+| 100KB–500KB | Noticeable replay latency |
+| 500KB–2MB | Slow replays, memory pressure |
+| > 2MB | Risk of timeout/OOM during replay |
+
+**Mitigations:**
+
+1. **Keep payloads small** — return only what the next step needs:
+```python
+# BAD — returning entire LLM conversation history
+return {"full_response": giant_llm_output, "metadata": {...}, "debug": {...}}
+
+# GOOD — return only what downstream activities need
+return {"claim_type": "VSC", "confidence": 0.95, "summary": "Short summary"}
+```
+
+2. **Use blob storage for large data:**
+```python
+@app.activity_trigger(input_name="input")
+def process_document(input: dict) -> dict:
+    # Store large result in blob, return reference
+    blob_url = upload_to_blob(large_result)
+    return {"blob_url": blob_url, "summary": "2-sentence summary"}
+```
+
+3. **Auto-compression:** Payloads > 45KB are automatically compressed to blob storage by the framework, but this adds latency on every replay.
+
+> **Gotcha for LLM workflows:** Agent responses can be surprisingly large (10-50KB with full reasoning). Always truncate/summarize before returning from activities.
+
+---
+
+### 18.5 External Events — At-Least-Once Delivery & Race Conditions
+
+`raise_event()` has **at-least-once** delivery semantics. This means:
+
+1. **Duplicate events are possible** — if the caller retries (network timeout, load balancer retry), the same event can arrive twice.
+2. **Events can arrive before the orchestrator is waiting** — if `raise_event()` is called before the orchestrator reaches `wait_for_external_event()`, the event is buffered and delivered when the wait is reached.
+3. **No built-in deduplication** — you must handle this yourself.
+
+**Safe HITL approval pattern:**
+```python
+@app.orchestration_trigger(context_name="context")
+def safe_hitl_workflow(context):
+    result = yield context.call_activity("ClassifyClaim", context.get_input())
+
+    # Set status so the approval endpoint knows what step we're on
+    context.set_custom_status({"step": "awaiting_review", "claim_id": result["claim_id"]})
+
+    # Wait with timeout
+    approval_event = context.wait_for_external_event("ApprovalDecision")
+    timeout = context.create_timer(
+        context.current_utc_datetime + timedelta(hours=24)
+    )
+    winner = yield context.task_any([approval_event, timeout])
+
+    if winner == timeout:
+        # Handle timeout — don't just silently fail
+        yield context.call_activity("NotifyTimeout", result)
+        return {"status": "timeout"}
+
+    timeout.cancel()
+    approval = approval_event.result
+
+    # Validate approval has required fields (defensive against malformed events)
+    if not approval.get("decision"):
+        return {"status": "error", "message": "Approval missing decision field"}
+
+    return {"status": approval["decision"]}
+```
+
+**Approval endpoint — guard against duplicates and wrong-state events:**
+```python
+@app.route(route="approve/{instance_id}", methods=["POST"])
+@app.durable_client_input(client_name="client")
+async def approve(req, client):
+    instance_id = req.route_params["instance_id"]
+    status = await client.get_status(instance_id)
+
+    if not status:
+        return func.HttpResponse("Instance not found", status_code=404)
+
+    if status.runtime_status.name != "Running":
+        return func.HttpResponse(
+            f"Instance is {status.runtime_status.name}, cannot approve",
+            status_code=409  # Conflict — not 400
+        )
+
+    # Check custom status to ensure we're at the right step
+    cs = status.custom_status
+    if isinstance(cs, str):
+        cs = json.loads(cs)
+    if cs.get("step") != "awaiting_review":
+        return func.HttpResponse(
+            f"Instance is at step '{cs.get('step')}', not awaiting review",
+            status_code=409
+        )
+
+    await client.raise_event(instance_id, "ApprovalDecision", req.get_json())
+    return func.HttpResponse("Approval submitted", status_code=202)
+```
+
+---
+
+### 18.6 Versioning — The Silent Orchestration Killer
+
+**The problem:** If you deploy new code while orchestrations are running, the replay mechanism tries to replay old history against new code. If the activity sequence has changed, you get `NonDeterministicOrchestrationException` and the orchestration is **permanently stuck**.
+
+**Scenarios that break running orchestrations:**
+
+| Change | Breaks Running? |
+|--------|----------------|
+| Add a new activity call between existing ones | Yes |
+| Remove an activity call | Yes |
+| Rename an activity function | Yes |
+| Change activity input/output schema | Maybe (if serialization changes) |
+| Change logic inside an activity (not the orchestrator) | No — safe |
+| Change what happens after the last yield | No — safe |
+| Add a new `if` branch after an existing yield | Yes (if replay takes new path) |
+
+**Safe deployment strategies:**
+
+1. **Drain-then-deploy:** Wait for all running orchestrations to complete before deploying.
+   ```bash
+   # Check for running instances
+   curl "http://localhost:7071/runtime/webhooks/durabletask/instances?runtimeStatus=Running"
+   ```
+
+2. **Side-by-side with slots:** Deploy new version to a staging slot, drain production, swap.
+
+3. **Versioned orchestrator names:** Run old and new orchestrators in parallel.
+   ```python
+   @app.orchestration_trigger(context_name="context")
+   def claim_workflow_v2(context):  # New version
+       ...
+
+   @app.orchestration_trigger(context_name="context")
+   def claim_workflow_v1(context):  # Keep for running instances
+       ...
+   ```
+
+> **Gotcha:** There is no automatic migration path. Running orchestrations that hit a `NonDeterministicOrchestrationException` must be terminated and restarted manually.
+
+---
+
+### 18.7 Timer & Timeout Gotchas
+
+**1. Timers are durable, not in-memory:**
+Timers survive function app restarts. A 24-hour HITL timeout will fire even if the app is restarted 10 times in between.
+
+**2. Minimum timer resolution:**
+Timers have a ~1-second minimum resolution. Don't use them for sub-second delays.
+
+**3. Timer + event race condition:**
+```python
+# CORRECT — always cancel the loser
+winner = yield context.task_any([approval_event, timeout])
+if winner == approval_event:
+    timeout.cancel()  # MUST cancel, or timer fires later and wakes orchestrator
+else:
+    # Timeout won — event might still arrive later (buffered)
+    pass
+```
+
+**4. Expired timer behavior:**
+If a timer's target time is in the past (e.g., you create a timer for "5 minutes ago"), it fires immediately on the next replay. This is by design but can be surprising.
+
+---
+
+### 18.8 Eternal Orchestrations & Memory
+
+For long-running workflows that process items continuously (e.g., a queue processor), use `ContinueAsNew` to reset history:
+
+```python
+@app.orchestration_trigger(context_name="context")
+def eternal_processor(context):
+    batch = yield context.call_activity("FetchBatch", None)
+
+    if batch:
+        yield context.call_activity("ProcessBatch", batch)
+
+    # Reset history — prevents unbounded growth
+    next_run = context.current_utc_datetime + timedelta(minutes=5)
+    yield context.create_timer(next_run)
+    context.continue_as_new(None)  # History is wiped, starts fresh
+```
+
+**Gotchas:**
+- `ContinueAsNew` resets execution history but **blob storage artifacts from old histories are NOT automatically cleaned up**. Over time, this can consume significant storage.
+- Any pending external events or timers are **lost** when `ContinueAsNew` is called.
+- For HITL workflows, do NOT use eternal orchestrations — use a standard orchestration per claim/item instead.
+
+---
+
+### 18.9 `get_status_by()` Is Unreliable — Use HTTP API Directly
+
+The Python SDK's `get_status_by()` method (for listing orchestration instances by filter) has known reliability issues:
+- Sometimes returns empty results when instances exist
+- Filtering by `runtime_status` can miss instances
+- `created_time_from`/`created_time_to` filters behave inconsistently
+
+**Workaround — use the Durable Task HTTP API directly:**
+```python
+import aiohttp
+
+async def list_instances(runtime_status=None, prefix=None):
+    base_url = "http://localhost:7071/runtime/webhooks/durabletask/instances"
+    params = {"showInput": "false"}
+
+    if runtime_status:
+        params["runtimeStatus"] = ",".join(runtime_status)
+    if prefix:
+        params["instanceIdPrefix"] = prefix
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(base_url, params=params) as resp:
+            return await resp.json()
+```
+
+This is documented in the [Durable Functions HTTP API reference](https://learn.microsoft.com/en-us/azure/azure-functions/durable/durable-functions-http-api).
+
+---
+
+### 18.10 Error Handling in Orchestrators
+
+**Activities that throw exceptions:** When an activity throws an exception, the orchestrator receives it as a `TaskFailedException`. If you don't catch it, the entire orchestration fails.
+
+```python
+@app.orchestration_trigger(context_name="context")
+def resilient_workflow(context):
+    try:
+        result = yield context.call_activity("RiskyActivity", context.get_input())
+    except Exception as e:
+        # Log the error (only on non-replay)
+        if not context.is_replaying:
+            logging.error(f"Activity failed: {e}")
+
+        # Decide: retry, skip, or fail
+        context.set_custom_status({"step": "error", "message": str(e)})
+        yield context.call_activity("NotifyError", {"error": str(e)})
+        return {"status": "failed", "error": str(e)}
+```
+
+**Retry with backoff (built-in):**
+```python
+retry_options = df.RetryOptions(
+    first_retry_interval_in_milliseconds=5000,
+    max_number_of_attempts=3,
+    backoff_coefficient=2.0,        # 5s, 10s, 20s
+    max_retry_interval_in_milliseconds=60000
+)
+result = yield context.call_activity_with_retry("FlakyAPI", retry_options, input_data)
+```
+
+> **Gotcha:** `call_activity_with_retry` retries are **recorded in history**. Each retry attempt adds entries. If you retry 3 times across 5 activities, your history grows by 15 entries instead of 5.
+
+---
+
+### 18.11 Summary: Top 10 Gotchas Checklist
+
+Use this checklist before going to production:
+
+- [ ] **No non-deterministic calls in orchestrators** — no `datetime.now()`, `uuid4()`, `os.environ`, HTTP calls, or file I/O
+- [ ] **Orchestrator is `def`, not `async def`** — Python generators required
+- [ ] **`PYTHON_THREADPOOL_THREAD_COUNT`** set to 4+ for concurrent activity execution
+- [ ] **Activity payloads are small** — store large data in blob storage, return references
+- [ ] **Timer is always cancelled** when the event wins in `task_any`
+- [ ] **Approval endpoint validates orchestration state** before raising events (status + step check)
+- [ ] **Deployment strategy accounts for running orchestrations** — drain or version
+- [ ] **Retry counts considered in history size** — each retry attempt = more history
+- [ ] **`custom_status` parsed defensively** — may be string or dict depending on SDK version
+- [ ] **`get_status_by()` replaced with HTTP API** for listing instances
 
 ---
 
